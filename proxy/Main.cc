@@ -1559,7 +1559,10 @@ main(int /* argc ATS_UNUSED */, char **argv)
     plugin_init();        // plugin.config
 
     SSLConfigParams::init_ssl_ctx_cb = init_ssl_ctx_callback;
+    uid_t curr_euid = geteuid();
+    seteuid(0); // need to be root to read SSL certs
     sslNetProcessor.start(getNumSSLThreads(), stacksize);
+    seteuid(curr_euid);
     pmgmt->registerPluginCallbacks(global_config_cbs);
 
     cacheProcessor.set_after_init_callback(&CB_After_Cache_Init);
