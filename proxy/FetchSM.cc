@@ -399,11 +399,6 @@ FetchSM::process_fetch_read(int event)
     if (fetch_flags & TS_FETCH_FLAGS_STREAM)
       return InvokePluginExt();
     if(callback_options == AFTER_HEADER || callback_options == AFTER_BODY) {
-      if (!header_done) {
-        if (client_response_hdr.parse_resp(&http_parser, resp_reader, &bytes_used, 0) == PARSE_DONE) {
-	    header_done = 1;
-	  }
-      } 
       get_info_from_buffer(resp_reader);
       InvokePlugin( callback_events.success_event_id, (void *) this);
     }
