@@ -646,6 +646,7 @@ extern "C"
    * @param method: request method.
    * @param url: scheme://host[:port]/path.
    * @param version: client http version, eg: "HTTP/1.1".
+   * @param local_addr: the incoming address
    * @param client_addr: client addr sent to log.
    * @param flags: can be bitwise OR of several TSFetchFlags.
    *
@@ -653,6 +654,7 @@ extern "C"
    */
   tsapi TSFetchSM TSFetchCreate(TSCont contp, TSFetchMethod method,
                                 const char *url, const char *version,
+                                struct sockaddr const* local_addr,
                                 struct sockaddr const* client_addr, int flags);
 
   /*

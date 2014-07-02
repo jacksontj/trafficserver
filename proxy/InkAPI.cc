@@ -6047,7 +6047,7 @@ extern HttpSessionAccept *plugin_http_accept;
 extern HttpSessionAccept *plugin_http_transparent_accept;
 
 TSVConn
-TSHttpConnectWithPluginId(sockaddr const* addr, char const* tag, int64_t id)
+TSHttpConnectWithPluginId(sockaddr const* addr, sockaddr const* local_addr, char const* tag, int64_t id)
 {
   sdk_assert(addr);
 
@@ -6058,6 +6058,7 @@ TSHttpConnectWithPluginId(sockaddr const* addr, char const* tag, int64_t id)
     PluginVCCore *new_pvc = PluginVCCore::alloc();
 
     new_pvc->set_active_addr(addr);
+    new_pvc->set_passive_addr(local_addr);
     new_pvc->set_plugin_id(id);
     new_pvc->set_plugin_tag(tag);
     new_pvc->set_accept_cont(plugin_http_accept);
@@ -6081,7 +6082,7 @@ TSHttpConnectWithPluginId(sockaddr const* addr, char const* tag, int64_t id)
 TSVConn
 TSHttpConnect(sockaddr const* addr)
 {
-  return TSHttpConnectWithPluginId(addr, "plugin", 0);
+  return TSHttpConnectWithPluginId(addr, NULL, "plugin", 0);
 }
 
 TSVConn
@@ -7281,6 +7282,7 @@ TSFetchUrl(const char* headers, int request_len, sockaddr const* ip , TSCont con
 TSFetchSM
 TSFetchCreate(TSCont contp, TSFetchMethod method,
               const char *url, const char *version,
+              struct sockaddr const* local_addr,
               struct sockaddr const* client_addr, int flags)
 {
   sdk_assert(sdk_sanity_check_continuation(contp) == TS_SUCCESS);
@@ -7289,7 +7291,7 @@ TSFetchCreate(TSCont contp, TSFetchMethod method,
   FetchSM *fetch_sm = FetchSMAllocator.alloc();
 
   fetch_sm->ext_init((Continuation*)contp, method, url, version,
-                     client_addr, flags);
+                     local_addr, client_addr, flags);
 
   return (TSFetchSM)fetch_sm;
 }

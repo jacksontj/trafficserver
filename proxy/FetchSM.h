@@ -78,7 +78,7 @@ public:
     contp = cont;
     callback_events = events;
     callback_options = options;
-    _addr.assign(addr);
+    remote_addr.assign(addr);
     fetch_flags = TS_FETCH_FLAGS_DECHUNK;
     writeRequest(headers,length);
     mutex = new_ProxyMutex();
@@ -112,7 +112,7 @@ public:
   //
   void ext_init(Continuation *cont, TSFetchMethod method,
                 const char *url, const char *version,
-                const sockaddr *client_addr, int flags);
+                const sockaddr *local_addr, const sockaddr *client_addr, int flags);
   void ext_add_header(const char *name, int name_len,
                       const char *value, int value_len);
   void ext_lanuch();
@@ -164,7 +164,8 @@ private:
   bool header_done;
   bool resp_finished;
   bool is_internal_request;
-  IpEndpoint _addr;
+  IpEndpoint remote_addr;
+  IpEndpoint local_addr;
   int resp_is_chunked;
   int fetch_flags;
   void *user_data;

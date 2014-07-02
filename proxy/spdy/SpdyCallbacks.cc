@@ -170,10 +170,12 @@ spdy_fetcher_launch(SpdyRequest *req, TSFetchMethod method)
   string url;
   int fetch_flags;
   const sockaddr *client_addr;
+  const sockaddr *server_addr;
   SpdyClientSession *sm = req->spdy_sm;
 
   url = req->scheme + "://" + req->host + req->path;
   client_addr = TSNetVConnRemoteAddrGet(reinterpret_cast<TSVConn>(sm->vc));
+  server_addr = TSNetVConnLocalAddrGet(reinterpret_cast<TSVConn>(sm->vc));
 
   req->url = url;
   Debug("spdy", "++++Request[%" PRIu64 ":%d] %s", sm->sm_id, req->stream_id, req->url.c_str());
@@ -188,7 +190,7 @@ spdy_fetcher_launch(SpdyRequest *req, TSFetchMethod method)
 
   req->fetch_sm = TSFetchCreate((TSCont)sm, method,
                                 url.c_str(), req->version.c_str(),
-                                client_addr, fetch_flags);
+                                server_addr, client_addr, fetch_flags);
   TSFetchUserDataSet(req->fetch_sm, req);
 
   //

@@ -73,7 +73,7 @@ FetchSM::httpConnect()
   int64_t id = pi ? pi->getPluginId() : 0;
 
   Debug(DEBUG_TAG, "[%s] calling httpconnect write", __FUNCTION__);
-  http_vc = reinterpret_cast<PluginVC*>(TSHttpConnectWithPluginId(&_addr.sa, tag, id));
+  http_vc = reinterpret_cast<PluginVC*>(TSHttpConnectWithPluginId(&remote_addr.sa, &local_addr.sa, tag, id));
 
   /*
    * TS-2906: We need a way to unset internal request when using FetchSM, the use case for this
@@ -488,6 +488,7 @@ FetchSM::fetch_handler(int event, void *edata)
 void
 FetchSM::ext_init(Continuation *cont, TSFetchMethod method,
                   const char *url, const char *version,
+                  const sockaddr *local_address,
                   const sockaddr *client_addr, int flags)
 {
   init_comm();
@@ -500,7 +501,8 @@ FetchSM::ext_init(Continuation *cont, TSFetchMethod method,
   }
 
   contp = cont;
-  _addr.assign(client_addr);
+  remote_addr.assign(client_addr);
+  local_addr.assign(local_address);
 
   //
   // Enable stream IO automatically.

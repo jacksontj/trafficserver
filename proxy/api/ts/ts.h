@@ -1595,7 +1595,7 @@ extern "C"
       @param tag A logging tag that can be accessed via the pitag field. May be @c NULL.
       @param id A logging id that can be access via the piid field.
    */
-  tsapi TSVConn TSHttpConnectWithPluginId(struct sockaddr const* addr, char const* tag, int64_t id);
+  tsapi TSVConn TSHttpConnectWithPluginId(struct sockaddr const* addr, struct sockaddr const* local_addr, char const* tag, int64_t id);
 
   /** Backwards compatible version.
       This provides a @a tag of "plugin" and an @a id of 0.
