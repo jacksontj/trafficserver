@@ -58,6 +58,7 @@
 #define SSL_CA_TAG            "ssl_ca_name"
 #define SSL_SESSION_TICKET_ENABLED "ssl_ticket_enabled"
 #define SSL_SESSION_TICKET_KEY_FILE_TAG "ticket_key_name"
+#define SSL_SPDY_ENABLED "spdy_enabled"
 #define SSL_KEY_DIALOG        "ssl_key_dialog"
 
 // openssl version must be 0.9.4 or greater
@@ -82,7 +83,7 @@ typedef SSL_METHOD * ink_ssl_method_t;
 // gather user provided settings from ssl_multicert.config in to a single struct
 struct ssl_user_config
 {
-  ssl_user_config () : session_ticket_enabled(1) {
+  ssl_user_config () : session_ticket_enabled(1), spdy_enabled(false) {
   }
 
   int session_ticket_enabled;  // ssl_ticket_enabled - session ticket enabled
@@ -92,6 +93,7 @@ struct ssl_user_config
   xptr<char> key;    // ssl_key_name - Private key
   xptr<char> ticket_key_filename; // ticket_key_name - session key file. [key_name (16Byte) + HMAC_secret (16Byte) + AES_key (16Byte)]
   xptr<char> dialog; // ssl_key_dialog - Private key dialog
+  bool spdy_enabled; // enable spdy
 };
 
 // Check if the ticket_key callback #define is available, and if so, enable session tickets.
@@ -1245,11 +1247,23 @@ ssl_store_ssl_context(
   SSL_CTX_set_info_callback(ctx, ssl_callback_info);
 
 #if TS_USE_TLS_NPN
-  SSL_CTX_set_next_protos_advertised_cb(ctx, SSLNetVConnection::advertise_next_protocol, NULL);
+  if (unlikely(sslMultCertSettings.spdy_enabled)) {
+    Debug("ssl", "enabling spdy for cert");
+    SSL_CTX_set_next_protos_advertised_cb(ctx, SSLNetVConnection::advertise_next_protocol, NULL);
+  } else {
+    Debug("ssl", "disabling spdy for cert");
+    SSL_CTX_set_next_protos_advertised_cb(ctx, SSLNetVConnection::advertise_next_protocol_no_spdy, NULL);
+  }
 #endif /* TS_USE_TLS_NPN */
 
 #if TS_USE_TLS_ALPN
-  SSL_CTX_set_alpn_select_cb(ctx, SSLNetVConnection::select_next_protocol, NULL);
+  if (unlikely(sslMultCertSettings.spdy_enabled)) {
+    Debug("ssl", "enabling spdy for cert");
+    SSL_CTX_set_alpn_select_cb(ctx, SSLNetVConnection::select_next_protocol, NULL);
+  } else {
+    Debug("ssl", "disabling spdy for cert");
+    SSL_CTX_set_alpn_select_cb(ctx, SSLNetVConnection::select_next_protocol_no_spdy, NULL);
+  }
 #endif /* TS_USE_TLS_ALPN */
 
   certpath = Layout::relative_to(params->serverCertPathOnly, sslMultCertSettings.cert);
@@ -1337,6 +1351,13 @@ ssl_extract_certificate(
 
     if (strcasecmp(label, SSL_SESSION_TICKET_KEY_FILE_TAG) == 0) {
       sslMultCertSettings.ticket_key_filename = ats_strdup(value);
+    }
+
+    if (strcasecmp(label, SSL_SPDY_ENABLED) == 0) {
+      if (value && value[0] == '1')
+      {
+        sslMultCertSettings.spdy_enabled = true;
+      }
     }
 
     if (strcasecmp(label, SSL_KEY_DIALOG) == 0) {

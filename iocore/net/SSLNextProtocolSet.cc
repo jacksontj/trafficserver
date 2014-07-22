@@ -45,7 +45,7 @@ append_protocol(const char * proto, unsigned char * buf)
 static bool
 create_npn_advertisement(
   const SSLNextProtocolSet::NextProtocolEndpoint::list_type& endpoints,
-  unsigned char ** npn, size_t * len)
+  unsigned char ** npn, size_t * len, const char *prefix = NULL, size_t prefix_len = 0)
 {
   const SSLNextProtocolSet::NextProtocolEndpoint * ep;
   unsigned char * advertised;
@@ -54,8 +54,13 @@ create_npn_advertisement(
   *len = 0;
 
   for (ep = endpoints.head; ep != NULL; ep = endpoints.next(ep)) {
+    if (prefix && prefix_len && strncasecmp(ep->protocol, prefix, prefix_len) == 0) {
+      continue;
+    }
     *len += (strlen(ep->protocol) + 1);
   }
+
+  Debug("ssl", "Need %" PRId64 " bytes to advertise npn", *len);
 
   *npn = advertised = (unsigned char *)ats_malloc(*len);
   if (!(*npn)) {
@@ -63,6 +68,10 @@ create_npn_advertisement(
   }
 
   for (ep = endpoints.head; ep != NULL; ep = endpoints.next(ep)) {
+    if (prefix && prefix_len && strncasecmp(ep->protocol, prefix, prefix_len) == 0) {
+      Debug("ssl", "skipping protocol %s", ep->protocol);
+      continue;
+    }
     Debug("ssl", "advertising protocol %s", ep->protocol);
     advertised = append_protocol(ep->protocol, advertised);
   }
@@ -86,6 +95,23 @@ SSLNextProtocolSet::advertiseProtocols(const unsigned char ** out, unsigned * le
   if (npn && npnsz) {
     *out = npn;
     *len = npnsz;
+    return true;
+  }
+
+  return false;
+}
+
+bool
+SSLNextProtocolSet::advertiseProtocolsNotPrefixed(const unsigned char ** out, unsigned * len, const char *prefix, size_t prefix_len) const
+{
+  Debug("ssl", "Empty endpoints: %d", this->endpoints.empty());
+  if (!npn_nospdy && !this->endpoints.empty()) {
+    create_npn_advertisement(this->endpoints, &npn_nospdy, &npnsz_nospdy, prefix, prefix_len);
+  }
+
+  if (npn_nospdy && npnsz_nospdy) {
+    *out = npn_nospdy;
+    *len = npnsz_nospdy;
     return true;
   }
 
@@ -148,7 +174,7 @@ SSLNextProtocolSet::findEndpoint(
 }
 
 SSLNextProtocolSet::SSLNextProtocolSet()
-  : npn(0), npnsz(0)
+  : npn(0), npnsz(0), npn_nospdy(0), npnsz_nospdy(0)
 {
 }
 
