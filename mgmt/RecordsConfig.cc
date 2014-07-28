@@ -2009,6 +2009,9 @@ RecordElement RecordsConfig[] = {
   {RECT_CONFIG, "proxy.config.remap.num_remap_threads", RECD_INT, "0", RECU_NULL, RR_NULL, RECC_NULL, NULL, RECA_NULL}
   ,
 
+  {RECT_CONFIG, "proxy.config.http.buffer_post_body", RECD_INT, "1", RECU_DYNAMIC, RR_NULL, RECC_INT, "[0-1]", RECA_NULL}
+  ,
+
   //##############################################################################
   //#
   //# The End

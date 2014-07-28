@@ -306,7 +306,7 @@ HttpSM::HttpSM()
   : Continuation(NULL), sm_id(-1), magic(HTTP_SM_MAGIC_DEAD),
     //YTS Team, yamsat Plugin
     enable_redirection(false), redirect_url(NULL), redirect_url_len(0), redirection_tries(0),
-    transfered_bytes(0), post_failed(false), debug_on(false),
+    transfered_bytes(0), post_failed(false), debug_on(false), post_fully_received(false),
     plugin_tunnel_type(HTTP_NO_PLUGIN_TUNNEL),
     plugin_tunnel(NULL), reentrancy_count(0),
     history_pos(0), tunnel(), ua_entry(NULL),
@@ -362,6 +362,7 @@ HttpSM::cleanup()
   }
   magic = HTTP_SM_MAGIC_DEAD;
   debug_on = false;
+  post_fully_received = false;
 }
 
 void
@@ -824,6 +825,103 @@ HttpSM::state_drain_client_request_body(int event, void *data)
 }
 #endif /* PROXY_DRAIN */
 
+void HttpSM::wait_for_full_body()
+{
+  int64_t post_bytes = t_state.hdr_info.request_content_length; // handy save
+  int64_t avail = ua_buffer_reader->read_avail();
+
+  client_request_body_bytes = (avail < post_bytes) ? avail : post_bytes;
+
+  if (client_request_body_bytes < post_bytes) {
+    ua_buffer_reader->mbuf->size_index = buffer_size_to_index(post_bytes);
+
+    // we shouldn't pre-allocate large blocks just because the client sent a large content-length (basic DoS)
+    if (ua_buffer_reader->mbuf->size_index > BUFFER_SIZE_INDEX_32K) {
+      ua_buffer_reader->mbuf->size_index = BUFFER_SIZE_INDEX_32K;
+    }
+
+    DebugSM("http_post_wait", "[%" PRId64 "] buffer size to index changed: %" PRId64,
+        sm_id, ua_buffer_reader->mbuf->size_index);
+    ua_entry->vc_handler = &HttpSM::state_wait_for_full_body;
+    ua_entry->read_vio = ua_entry->vc->do_io_read(this, post_bytes - client_request_body_bytes, ua_buffer_reader->mbuf);
+  } else {
+    call_transact_and_set_next_state(NULL);
+  }
+}
+
+int
+HttpSM::state_wait_for_full_body(int event, void *data)
+{
+  STATE_ENTER(&HttpSM::state_wait_for_full_body, event);
+
+  ink_assert(ua_entry->read_vio == (VIO *) data);
+  ink_assert(ua_entry->vc == ua_session);
+
+  int64_t avail = ua_buffer_reader->read_avail();
+  int64_t left = t_state.hdr_info.request_content_length - client_request_body_bytes;
+  int64_t avail_for_write = ua_buffer_reader->mbuf->block_write_avail();
+
+  DebugSM("http_post_wait", "[%" PRId64 "] event %d, data %p, current buffer avail: %" PRId64 ", remaining: %" PRId64 ", block available for write: %" PRId64 ", block count: %d",
+      sm_id, event, data, avail, left, avail_for_write, ua_buffer_reader->block_count());
+
+  if (event == VC_EVENT_READ_READY && avail_for_write <= left) {
+    ua_buffer_reader->mbuf->add_block();
+    DebugSM("http_post_wait", "[%" PRId64 "] adding block for post body", sm_id);
+  }
+
+  switch (event) {
+  case VC_EVENT_EOS:
+  case VC_EVENT_ERROR:
+    {
+      // Nothing we can do
+      set_ua_abort(HttpTransact::ABORTED, event);
+      terminate_sm = true;
+      break;
+    }
+  case VC_EVENT_ACTIVE_TIMEOUT:
+  case VC_EVENT_INACTIVITY_TIMEOUT:
+  {
+    // Handle timeout case.
+    set_ua_abort(HttpTransact::ABORTED, event);
+    call_transact_and_set_next_state(HttpTransact::ClientPostTimeout);
+    break;
+  }
+  case VC_EVENT_READ_READY:
+    {
+      ink_assert(avail < left);
+
+      client_request_body_bytes = avail; // since we're never consuming.
+      DebugSM("http_post_wait", "[%" PRId64 "] VC_EVENT_READ_READY: Post wait for full body: received: %" PRId64 " bytes expecting %" PRId64,
+          sm_id, avail, t_state.hdr_info.request_content_length);
+
+      ua_entry->read_vio->reenable_re();
+      break;
+    }
+  case VC_EVENT_READ_COMPLETE:
+    {
+      // We've finished draing the POST body
+      int64_t avail = ua_buffer_reader->read_avail();
+
+      DebugSM("http_post_wait", "[%" PRId64 "] VC_EVENT_READ_READY: Post wait for full body is complete, received: %" PRId64 " bytes expecting %" PRId64,
+          sm_id, avail, t_state.hdr_info.request_content_length);
+
+      client_request_body_bytes = avail; // since we're never consuming.
+
+      ink_assert(client_request_body_bytes == t_state.hdr_info.request_content_length);
+
+      ua_buffer_reader->mbuf->size_index = HTTP_HEADER_BUFFER_SIZE_INDEX;
+      ua_entry->vc_handler = &HttpSM::state_watch_for_client_abort;
+      ua_entry->read_vio = ua_entry->vc->do_io_read(this, INT64_MAX, ua_buffer_reader->mbuf);
+      post_fully_received = true;
+      call_transact_and_set_next_state(NULL);
+      break;
+    }
+  default:
+    ink_release_assert(0);
+  }
+
+  return EVENT_DONE;
+}
 
 int
 HttpSM::state_watch_for_client_abort(int event, void *data)
@@ -7244,6 +7342,12 @@ HttpSM::set_next_state()
       break;
     }
 #endif /* PROXY_DRAIN */
+
+  case HttpTransact::SM_ACTION_WAIT_FOR_FULL_BODY:
+    {
+      wait_for_full_body();
+      break;
+    }
 
   case HttpTransact::SM_ACTION_CONTINUE:
     {

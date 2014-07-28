@@ -275,6 +275,7 @@ public:
   int64_t transfered_bytes;     //Added to calculate POST data
   bool post_failed;             //Added to identify post failure
   bool debug_on;               //Transaction specific debug flag
+  bool post_fully_received;
 
   // Tunneling request to plugin
   HttpPluginTunnel_t plugin_tunnel_type;
@@ -308,10 +309,10 @@ public:
   void set_http_schedule(Continuation *);
   int get_http_schedule(int event, void *data);
 
-protected:
   IOBufferReader * ua_buffer_reader;
   IOBufferReader * ua_raw_buffer_reader;
 
+protected:
   HttpVCTableEntry *server_entry;
   HttpServerSession *server_session;
   int shared_session_retries;
@@ -351,6 +352,7 @@ protected:
 #ifdef PROXY_DRAIN
   int state_drain_client_request_body(int event, void *data);
 #endif /* PROXY_DRAIN */
+  int state_wait_for_full_body(int event, void *data);
   int state_read_client_request_header(int event, void *data);
   int state_watch_for_client_abort(int event, void *data);
   int state_read_push_response_header(int event, void *data);
@@ -420,6 +422,8 @@ protected:
 #ifdef PROXY_DRAIN
   void do_drain_request_body();
 #endif
+
+  void wait_for_full_body();
 
   bool do_congestion_control_lookup();
 
