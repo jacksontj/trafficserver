@@ -8593,3 +8593,30 @@ TSHttpEventNameLookup(TSEvent event)
 {
   return HttpDebugNames::get_event_name(static_cast<int>(event));
 }
+
+char *TSHttpTxnGetClientPostBody(TSHttpTxn txnp, int *len) {
+  char *ret = NULL;
+
+  sdk_assert(sdk_sanity_check_txn(txnp) == TS_SUCCESS);
+  HttpSM *sm = (HttpSM *) txnp;
+  int64_t read_avail = sm->ua_buffer_reader->read_avail();
+  if (read_avail == 0 || sm->t_state.hdr_info.request_content_length <= 0)
+    return NULL;
+
+  ret = (char *)TSmalloc(sizeof(char) * read_avail);
+
+  int64_t consumed = 0;
+  int64_t data_len = 0;
+  const char *char_data = NULL;
+  TSIOBufferBlock block = TSIOBufferReaderStart((TSIOBufferReader)sm->ua_buffer_reader);
+  while (block != NULL) {
+    char_data = TSIOBufferBlockReadStart(block, (TSIOBufferReader)sm->ua_buffer_reader, &data_len);
+    memcpy(ret + consumed, char_data, data_len);
+    consumed += data_len;
+    block = TSIOBufferBlockNext(block);
+  }
+
+  *len = (int)consumed;
+
+  return ret;
+}

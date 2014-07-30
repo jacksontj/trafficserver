@@ -1204,6 +1204,10 @@ register_stat_callbacks()
   RecRegisterRawStat(http_rsb, RECT_PROCESS,
                      "proxy.process.https.total_client_connections",
                      RECD_COUNTER, RECP_PERSISTENT, (int) https_total_client_connections_stat, RecRawStatSyncCount);
+
+  RecRegisterRawStat(http_rsb, RECT_PROCESS,
+                     "proxy.process.http.post_body_receive_timeout",
+                     RECD_COUNTER, RECP_PERSISTENT, (int) http_post_body_receive_timeout_stat, RecRawStatSyncCount);
 }
 
 
@@ -1467,6 +1471,8 @@ HttpConfig::startup()
   HttpEstablishStaticConfigLongLong(c.autoconf_port, "proxy.config.admin.autoconf_port");
   HttpEstablishStaticConfigByte(c.autoconf_localhost_only, "proxy.config.admin.autoconf.localhost_only");
 
+  HttpEstablishStaticConfigByte(c.buffer_post_body, "proxy.config.http.buffer_post_body");
+
   // Cluster time delta gets it own callback since it needs
   //  to use ink_atomic_swap
   c.cluster_time_delta = 0;
@@ -1714,6 +1720,8 @@ params->push_method_enabled = INT_TO_BOOL(m_master.push_method_enabled);
   // Local Manager
   params->autoconf_port = m_master.autoconf_port;
   params->autoconf_localhost_only = m_master.autoconf_localhost_only;
+
+  params->buffer_post_body = INT_TO_BOOL(m_master.buffer_post_body);
 
   m_id = configProcessor.set(m_id, params);
 

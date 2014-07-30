@@ -593,6 +593,16 @@ HttpTransact::BadRequest(State* s)
 }
 
 void
+HttpTransact::ClientPostTimeout(State* s)
+{
+  DebugTxn("http_trans", "[ClientPostTimeout]" "client timeout while posting.");
+  HTTP_INCREMENT_TRANS_STAT(http_post_body_receive_timeout_stat);
+  bootstrap_state_variables_from_request(s, &s->hdr_info.client_request);
+  build_error_response(s, HTTP_STATUS_REQUEST_TIMEOUT, "Request Timeout", "timeout#activity", NULL);
+  TRANSACT_RETURN(SM_ACTION_SEND_ERROR_CACHE_NOOP, NULL);
+}
+
+void
 HttpTransact::HandleBlindTunnel(State* s)
 {
   DebugTxn("http_trans", "[HttpTransact::HandleBlindTunnel]");
@@ -1265,38 +1275,54 @@ HttpTransact::HandleRequest(State* s)
 {
   DebugTxn("http_trans", "START HttpTransact::HandleRequest");
 
-  ink_assert(!s->hdr_info.server_request.valid());
+  if (!s->request_data.hdr) { // we haven't initialized
+    ink_assert(!s->hdr_info.server_request.valid());
 
-  HTTP_INCREMENT_TRANS_STAT(http_incoming_requests_stat);
+    HTTP_INCREMENT_TRANS_STAT(http_incoming_requests_stat);
 
-  if (s->client_info.port_attribute == HttpProxyPort::TRANSPORT_SSL) {
-    HTTP_INCREMENT_TRANS_STAT(https_incoming_requests_stat);
+    if (s->client_info.port_attribute == HttpProxyPort::TRANSPORT_SSL) {
+      HTTP_INCREMENT_TRANS_STAT(https_incoming_requests_stat);
+    }
+
+    if (s->api_release_server_session == true) {
+      s->api_release_server_session = false;
+    }
+    ///////////////////////////////////////////////
+    // if request is bad, return error response  //
+    ///////////////////////////////////////////////
+
+    if (!(is_request_valid(s, &s->hdr_info.client_request))) {
+      HTTP_INCREMENT_TRANS_STAT(http_invalid_client_requests_stat);
+      DebugTxn("http_seq", "[HttpTransact::HandleRequest] request invalid.");
+      s->next_action = SM_ACTION_SEND_ERROR_CACHE_NOOP;
+      //  s->next_action = HttpTransact::PROXY_INTERNAL_CACHE_NOOP;
+      return;
+    }
+    DebugTxn("http_seq", "[HttpTransact::HandleRequest] request valid.");
+
+    if (is_debug_tag_set("http_chdr_describe")) {
+      obj_describe(s->hdr_info.client_request.m_http, 1);
+    }
+
+    // at this point we are guaranteed that the request is good and acceptable.
+    // initialize some state variables from the request (client version,
+    // client keep-alive, cache action, etc.
+    initialize_state_variables_from_request(s, &s->hdr_info.client_request);
   }
 
-  if (s->api_release_server_session == true) {
-    s->api_release_server_session = false;
-  }
-  ///////////////////////////////////////////////
-  // if request is bad, return error response  //
-  ///////////////////////////////////////////////
+  if (s->http_config_param->buffer_post_body && s->hdr_info.request_content_length > 0) {
+    // Let's check if we've already fully received the post.
+    if (s->hdr_info.request_content_length == s->state_machine->ua_buffer_reader->read_avail()) {
+      s->state_machine->post_fully_received = true;
+    }
 
-  if (!(is_request_valid(s, &s->hdr_info.client_request))) {
-    HTTP_INCREMENT_TRANS_STAT(http_invalid_client_requests_stat);
-    DebugTxn("http_seq", "[HttpTransact::HandleRequest] request invalid.");
-    s->next_action = SM_ACTION_SEND_ERROR_CACHE_NOOP;
-    //  s->next_action = HttpTransact::PROXY_INTERNAL_CACHE_NOOP;
-    return;
+    if(!s->state_machine->post_fully_received) {
+      DebugTxn("http_trans", "Waiting for full post body of length: %" PRId64, s->hdr_info.request_content_length);
+      TRANSACT_RETURN(SM_ACTION_WAIT_FOR_FULL_BODY, HttpTransact::HandleRequest);
+    } else {
+      DebugTxn("http_trans", "Finished receiving post body of length %" PRId64, s->hdr_info.request_content_length);
+    }
   }
-  DebugTxn("http_seq", "[HttpTransact::HandleRequest] request valid.");
-
-  if (is_debug_tag_set("http_chdr_describe")) {
-    obj_describe(s->hdr_info.client_request.m_http, 1);
-  }
-
-  // at this point we are guaranteed that the request is good and acceptable.
-  // initialize some state variables from the request (client version,
-  // client keep-alive, cache action, etc.
-  initialize_state_variables_from_request(s, &s->hdr_info.client_request);
 
   // Cache lookup or not will be decided later at DecideCacheLookup().
   // Before it's decided to do a cache lookup,

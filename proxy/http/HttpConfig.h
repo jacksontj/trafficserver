@@ -271,6 +271,8 @@ enum
 
   http_total_x_redirect_stat,
 
+  http_post_body_receive_timeout_stat,
+
   // Times
   http_total_transactions_time_stat,
   http_total_transactions_think_time_stat,
@@ -795,6 +797,7 @@ public:
   MgmtInt autoconf_port;
   MgmtByte autoconf_localhost_only;
 
+  MgmtByte buffer_post_body;
 
 private:
   /////////////////////////////////////
@@ -943,7 +946,8 @@ HttpConfigParams::HttpConfigParams()
     ignore_accept_charset_mismatch(0),
     send_100_continue_response(0),
     autoconf_port(0),
-    autoconf_localhost_only(0)
+    autoconf_localhost_only(0),
+    buffer_post_body(0)
 {
 }
 

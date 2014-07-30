@@ -2337,6 +2337,17 @@ extern "C"
   */
   tsapi const char* TSHttpEventNameLookup(TSEvent event);
 
+  /** Get the body (if applicable) from a client request. YOU MUST
+      free the pointer returned from this call. This call will return
+      NULL if no body exists. Changes to this string will not affect
+      the post body. The second parameter will contain the length
+      of the string returned.
+
+      @return char * that contains the entire buffered post body, this
+          must be freed by the caller using TSFree!
+  */
+  tsapi char *TSHttpTxnGetClientPostBody(TSHttpTxn txnp, int *length);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
