@@ -1007,9 +1007,8 @@ HttpBodyTemplate::build_instantiated_buffer(HttpTransact::State * context, int64
 
   LogAccessHttp la(context->state_machine);
 
-  // disabling as it is causing double-logging on errored transactions;
-  // and if enabled, should return value be checked?
-  //Log::access(&la); 
+  // TODO: Should we check the return code from Log::access() ?
+  Log::access(&la);
   buffer = resolve_logfield_string((LogAccess *) & la, template_buffer);
 
   *buflen_return = ((buffer == NULL) ? 0 : strlen(buffer));
