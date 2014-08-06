@@ -1312,7 +1312,7 @@ HttpTransact::HandleRequest(State* s)
 
   if (s->http_config_param->buffer_post_body && s->hdr_info.request_content_length > 0) {
     // Let's check if we've already fully received the post.
-    if (s->hdr_info.request_content_length == s->state_machine->ua_buffer_reader->read_avail()) {
+    if (s->hdr_info.request_content_length <= s->state_machine->ua_buffer_reader->read_avail()) {
       s->state_machine->post_fully_received = true;
     }
 

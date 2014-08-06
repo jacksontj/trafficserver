@@ -832,21 +832,23 @@ void HttpSM::wait_for_full_body()
 
   client_request_body_bytes = (avail < post_bytes) ? avail : post_bytes;
 
-  if (client_request_body_bytes < post_bytes) {
-    ua_buffer_reader->mbuf->size_index = buffer_size_to_index(post_bytes);
-
-    // we shouldn't pre-allocate large blocks just because the client sent a large content-length (basic DoS)
-    if (ua_buffer_reader->mbuf->size_index > BUFFER_SIZE_INDEX_32K) {
-      ua_buffer_reader->mbuf->size_index = BUFFER_SIZE_INDEX_32K;
-    }
-
-    DebugSM("http_post_wait", "[%" PRId64 "] buffer size to index changed: %" PRId64,
-        sm_id, ua_buffer_reader->mbuf->size_index);
-    ua_entry->vc_handler = &HttpSM::state_wait_for_full_body;
-    ua_entry->read_vio = ua_entry->vc->do_io_read(this, post_bytes - client_request_body_bytes, ua_buffer_reader->mbuf);
-  } else {
-    call_transact_and_set_next_state(NULL);
+  ua_buffer_reader->mbuf->size_index = buffer_size_to_index(post_bytes);
+    
+  // we shouldn't pre-allocate large blocks just because the client sent a large content-length (basic DoS)
+  if (ua_buffer_reader->mbuf->size_index > BUFFER_SIZE_INDEX_32K) {
+    ua_buffer_reader->mbuf->size_index = BUFFER_SIZE_INDEX_32K;
   }
+    
+  DebugSM("http_post_wait", "[%" PRId64 "] buffer size to index changed: %" PRId64,
+          sm_id, ua_buffer_reader->mbuf->size_index);
+
+  int64_t avail_for_write = ua_buffer_reader->mbuf->block_write_avail();
+  if (avail_for_write < (post_bytes - client_request_body_bytes)) {
+    ua_buffer_reader->mbuf->add_block();
+  }
+
+  ua_entry->vc_handler = &HttpSM::state_wait_for_full_body;
+  ua_entry->read_vio = ua_entry->vc->do_io_read(this, post_bytes - client_request_body_bytes, ua_buffer_reader->mbuf);
 }
 
 int
@@ -902,7 +904,7 @@ HttpSM::state_wait_for_full_body(int event, void *data)
       // We've finished draing the POST body
       int64_t avail = ua_buffer_reader->read_avail();
 
-      DebugSM("http_post_wait", "[%" PRId64 "] VC_EVENT_READ_READY: Post wait for full body is complete, received: %" PRId64 " bytes expecting %" PRId64,
+      DebugSM("http_post_wait", "[%" PRId64 "] VC_EVENT_READ_COMPLETE: Post wait for full body is complete, received: %" PRId64 " bytes expecting %" PRId64,
           sm_id, avail, t_state.hdr_info.request_content_length);
 
       client_request_body_bytes = avail; // since we're never consuming.
