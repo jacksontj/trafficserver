@@ -45,43 +45,60 @@ append_protocol(const char * proto, unsigned char * buf)
 static bool
 create_npn_advertisement(
   const SSLNextProtocolSet::NextProtocolEndpoint::list_type& endpoints,
-  unsigned char ** npn, size_t * len)
+  unsigned char ** npn, size_t * len, unsigned char ** npn_nospdy, size_t * len_nospdy)
 {
   const SSLNextProtocolSet::NextProtocolEndpoint * ep;
   unsigned char * advertised;
+  unsigned char * advertised_nospdy;
 
   *npn = NULL;
   *len = 0;
+  *npn_nospdy = NULL;
+  *len_nospdy = 0;
 
   for (ep = endpoints.head; ep != NULL; ep = endpoints.next(ep)) {
     *len += (strlen(ep->protocol) + 1);
+    if (strncmp(ep->protocol, "spdy", 4) != 0) {
+      *len_nospdy += (strlen(ep->protocol) + 1);
+    }
   }
 
   *npn = advertised = (unsigned char *)ats_malloc(*len);
-  if (!(*npn)) {
+  *npn_nospdy = advertised_nospdy = (unsigned char *)ats_malloc(*len_nospdy);
+  if (!(*npn) || !(*npn_nospdy)) {
     goto fail;
   }
 
   for (ep = endpoints.head; ep != NULL; ep = endpoints.next(ep)) {
     Debug("ssl", "advertising protocol %s", ep->protocol);
     advertised = append_protocol(ep->protocol, advertised);
+    if (strncmp(ep->protocol, "spdy", 4) != 0) {
+      advertised_nospdy = append_protocol(ep->protocol, advertised_nospdy);
+    }
   }
 
   return true;
 
 fail:
   ats_free(*npn);
+  ats_free(*npn_nospdy);
+  *npn_nospdy = NULL;
+  *len_nospdy = 0;
   *npn = NULL;
   *len = 0;
   return false;
 }
 
 bool
-SSLNextProtocolSet::advertiseProtocols(const unsigned char ** out, unsigned * len) const
+SSLNextProtocolSet::advertiseProtocols(const unsigned char ** out, unsigned * len, bool with_spdy) const
 {
-  if (npn && npnsz) {
+  if (with_spdy && npn && npnsz) {
     *out = npn;
     *len = npnsz;
+    return true;
+  } else if (!with_spdy && npn_nospdy && npnsz_nospdy) {
+    *out = npn_nospdy;
+    *len = npnsz_nospdy;
     return true;
   }
 
@@ -107,7 +124,13 @@ SSLNextProtocolSet::registerEndpoint(const char * proto, Continuation * ep)
       npnsz = 0;
     }
 
-    create_npn_advertisement(this->endpoints, &npn, &npnsz);
+    if (npn_nospdy) {
+      ats_free(npn_nospdy);
+      npn_nospdy = NULL;
+      npnsz_nospdy = 0;
+    }
+
+    create_npn_advertisement(this->endpoints, &npn, &npnsz, &npn_nospdy, &npnsz_nospdy);
 
     return true;
   }
@@ -146,7 +169,7 @@ SSLNextProtocolSet::findEndpoint(
 }
 
 SSLNextProtocolSet::SSLNextProtocolSet()
-  : npn(0), npnsz(0)
+  : npn(NULL), npnsz(0), npn_nospdy(NULL), npnsz_nospdy(0)
 {
 }
 

@@ -37,7 +37,7 @@ public:
 
   bool registerEndpoint(const char *, Continuation *);
   bool unregisterEndpoint(const char *, Continuation *);
-  bool advertiseProtocols(const unsigned char ** out, unsigned * len) const;
+  bool advertiseProtocols(const unsigned char ** out, unsigned * len, bool with_spdy = true) const;
 
   Continuation * findEndpoint(const unsigned char *, unsigned) const;
 
@@ -61,6 +61,10 @@ private:
 
   mutable unsigned char * npn;
   mutable size_t npnsz;
+
+  mutable unsigned char * npn_nospdy;
+  mutable size_t npnsz_nospdy;
+
 
   NextProtocolEndpoint::list_type endpoints;
 };
