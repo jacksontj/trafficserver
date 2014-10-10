@@ -32,7 +32,7 @@
 #include "P_SSLUtils.h"
 #include <openssl/ssl.h>
 
-#define SSL_MAX_SESSION_SIZE 2048
+#define SSL_MAX_SESSION_SIZE 256
 
 struct SSLSessionID {
   char bytes[SSL_MAX_SSL_SESSION_ID_LENGTH];
@@ -103,12 +103,11 @@ struct SSLSessionID {
 class SSLSession {
 public:
   SSLSessionID session_id;
-  const char *sni_name;
   Ptr<IOBufferData> asn1_data; /* this is the ASN1 representation of the SSL_CTX */
   size_t len_asn1_data;
 
-  SSLSession(const SSLSessionID &id, const char *name, Ptr<IOBufferData> ssl_asn1_data, size_t len_asn1)
- : session_id(id), sni_name(name), asn1_data(ssl_asn1_data), len_asn1_data(len_asn1)
+  SSLSession(const SSLSessionID &id, Ptr<IOBufferData> ssl_asn1_data, size_t len_asn1)
+ : session_id(id), asn1_data(ssl_asn1_data), len_asn1_data(len_asn1)
   { }
 
 	LINK(SSLSession, link);
@@ -119,8 +118,8 @@ public:
   SSLSessionBucket();
   ~SSLSessionBucket();
   void removeOldestSession();
-  void insertSession(const SSLSessionID &, const char *sni_name, SSL_SESSION *ctx);
-  bool getSession(const SSLSessionID &, const char *sni_name, SSL_SESSION **ctx);
+  void insertSession(const SSLSessionID &, SSL_SESSION *ctx);
+  bool getSession(const SSLSessionID &, SSL_SESSION **ctx) const;
   void removeSession(const SSLSessionID &);
 
 private:
@@ -133,8 +132,8 @@ private:
 
 class SSLSessionCache {
 public:
-	bool getSession(const SSLSessionID &sid, const char *sni_name, SSL_SESSION **sess);
-	void insertSession(const SSLSessionID &sid, const char *sni_name, SSL_SESSION *sess);
+	bool getSession(const SSLSessionID &sid, SSL_SESSION **sess) const;
+	void insertSession(const SSLSessionID &sid, SSL_SESSION *sess);
 	void removeSession(const SSLSessionID &sid);
   SSLSessionCache();
   ~SSLSessionCache();
