@@ -1006,6 +1006,7 @@ SSLInitServerContext(
   STACK_OF(X509_NAME) *ca_list;
   unsigned char hash_buf[EVP_MAX_MD_SIZE];
   unsigned int hash_len = 0;
+  char const* setting_cert = sslMultCertSettings.cert.get();
 
   // disable selected protocols
   SSL_CTX_set_options(ctx, params->ssl_ctx_options);
@@ -1158,7 +1159,7 @@ SSLInitServerContext(
 
   Debug("ssl", "Using '%s' in hash for session id context", sslMultCertSettings.cert.get());
 
-  if (EVP_DigestUpdate(&digest, sslMultCertSettings.cert, strlen(sslMultCertSettings.cert.get())) == 0) {
+  if (NULL == setting_cert || EVP_DigestUpdate(&digest, sslMultCertSettings.cert, strlen(setting_cert)) == 0) {
    SSLError("EVP_DigestUpdate failed");
    goto fail;
   }
