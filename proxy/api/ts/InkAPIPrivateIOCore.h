@@ -33,6 +33,7 @@
 #include "P_Cache.h"
 #include "P_Net.h"
 #endif
+#include <execinfo.h>
 
 enum INKContInternalMagic_t
 {
@@ -61,6 +62,8 @@ public:
   int m_deleted;
   //INKqa07670: Nokia memory leak bug fix
   INKContInternalMagic_t m_free_magic;
+  void *bt[64];
+  size_t bt_sz;
 };
 
 class INKVConnInternal:public INKContInternal

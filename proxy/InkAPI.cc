@@ -61,6 +61,7 @@
 #include "I_RecDefs.h"
 #include "I_RecCore.h"
 #include "HttpProxyServerMain.h"
+#include <execinfo.h>
 
 
 /****************************************************************
@@ -927,7 +928,7 @@ FileImpl::fgets(char *buf, int length)
 
 INKContInternal::INKContInternal()
   : DummyVConnection(NULL), mdata(NULL), m_event_func(NULL), m_event_count(0), m_closed(1), m_deletable(0),
-    m_deleted(0), m_free_magic(INKCONT_INTERN_MAGIC_ALIVE)
+    m_deleted(0), m_free_magic(INKCONT_INTERN_MAGIC_ALIVE), bt_sz(0)
 { }
 
 INKContInternal::INKContInternal(TSEventFunc funcp, TSMutex mutexp)
@@ -955,6 +956,7 @@ INKContInternal::destroy()
   }
   m_deleted = 1;
   if (m_deletable) {
+    bt_sz = backtrace (bt, 64);
     this->mutex = NULL;
     m_free_magic = INKCONT_INTERN_MAGIC_DEAD;
     INKContAllocator.free(this);
@@ -1034,6 +1036,7 @@ INKVConnInternal::destroy()
   m_deleted = 1;
   if (m_deletable) {
     this->mutex = NULL;
+    bt_sz = backtrace (bt, 64);
     m_read_vio.set_continuation(NULL);
     m_write_vio.set_continuation(NULL);
     INKVConnAllocator.free(this);
