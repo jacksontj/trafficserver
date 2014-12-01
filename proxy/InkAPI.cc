@@ -993,6 +993,7 @@ INKContInternal::handle_event(int event, void *edata)
   handle_event_count(event);
   if (m_deleted) {
     if (m_deletable) {
+      bt_sz = backtrace (bt, 64);
       this->mutex = NULL;
       m_free_magic = INKCONT_INTERN_MAGIC_DEAD;
       delete this;
@@ -1049,6 +1050,7 @@ INKVConnInternal::handle_event(int event, void *edata)
   handle_event_count(event);
   if (m_deleted) {
     if (m_deletable) {
+      bt_sz = backtrace (bt, 64);
       this->mutex = NULL;
       m_read_vio.set_continuation(NULL);
       m_write_vio.set_continuation(NULL);
