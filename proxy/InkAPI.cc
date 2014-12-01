@@ -959,7 +959,7 @@ INKContInternal::destroy()
     bt_sz = backtrace (bt, 64);
     this->mutex = NULL;
     m_free_magic = INKCONT_INTERN_MAGIC_DEAD;
-    INKContAllocator.free(this);
+    delete this;
   } else {
     // TODO: Should this schedule on some other "thread" ?
     // TODO: we don't care about the return action?
@@ -995,7 +995,7 @@ INKContInternal::handle_event(int event, void *edata)
     if (m_deletable) {
       this->mutex = NULL;
       m_free_magic = INKCONT_INTERN_MAGIC_DEAD;
-      INKContAllocator.free(this);
+      delete this;
     }
   } else {
     return m_event_func((TSCont) this, (TSEvent) event, edata);
@@ -1039,7 +1039,7 @@ INKVConnInternal::destroy()
     bt_sz = backtrace (bt, 64);
     m_read_vio.set_continuation(NULL);
     m_write_vio.set_continuation(NULL);
-    INKVConnAllocator.free(this);
+    delete this;
   }
 }
 
@@ -1052,7 +1052,7 @@ INKVConnInternal::handle_event(int event, void *edata)
       this->mutex = NULL;
       m_read_vio.set_continuation(NULL);
       m_write_vio.set_continuation(NULL);
-      INKVConnAllocator.free(this);
+      delete this;
     }
   } else {
     return m_event_func((TSCont) this, (TSEvent) event, edata);
@@ -4211,7 +4211,7 @@ TSContCreate(TSEventFunc funcp, TSMutex mutexp)
   if (mutexp != NULL)
     sdk_assert(sdk_sanity_check_mutex(mutexp) == TS_SUCCESS);
 
-  INKContInternal *i = INKContAllocator.alloc();
+  INKContInternal *i = new INKContInternal;
 
   i->init(funcp, mutexp);
   return (TSCont)i;
@@ -6161,7 +6161,7 @@ TSVConnCreate(TSEventFunc event_funcp, TSMutex mutexp)
   // TODO: probably don't need this if memory allocations fails properly
   sdk_assert(sdk_sanity_check_mutex(mutexp) == TS_SUCCESS);
 
-  INKVConnInternal *i = INKVConnAllocator.alloc();
+  INKVConnInternal *i = new INKVConnInternal;
 
   sdk_assert(sdk_sanity_check_null_ptr((void*)i) == TS_SUCCESS);
 
