@@ -884,6 +884,7 @@ HttpSM::state_wait_for_full_body(int event, void *data)
   case VC_EVENT_INACTIVITY_TIMEOUT:
   {
     // Handle timeout case.
+    ua_entry->vc->do_io_shutdown(IO_SHUTDOWN_READ);
     set_ua_abort(HttpTransact::ABORTED, event);
     call_transact_and_set_next_state(HttpTransact::ClientPostTimeout);
     break;
