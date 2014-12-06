@@ -959,7 +959,7 @@ INKContInternal::destroy()
     bt_sz = backtrace (bt, 64);
     this->mutex = NULL;
     m_free_magic = INKCONT_INTERN_MAGIC_DEAD;
-    delete this;
+    INKContAllocator.free(this);
   } else {
     // TODO: Should this schedule on some other "thread" ?
     // TODO: we don't care about the return action?
@@ -993,10 +993,9 @@ INKContInternal::handle_event(int event, void *edata)
   handle_event_count(event);
   if (m_deleted) {
     if (m_deletable) {
-      bt_sz = backtrace (bt, 64);
       this->mutex = NULL;
       m_free_magic = INKCONT_INTERN_MAGIC_DEAD;
-      delete this;
+      INKContAllocator.free(this);
     }
   } else {
     return m_event_func((TSCont) this, (TSEvent) event, edata);
@@ -1040,7 +1039,7 @@ INKVConnInternal::destroy()
     bt_sz = backtrace (bt, 64);
     m_read_vio.set_continuation(NULL);
     m_write_vio.set_continuation(NULL);
-    delete this;
+    INKVConnAllocator.free(this);
   }
 }
 
@@ -1050,11 +1049,10 @@ INKVConnInternal::handle_event(int event, void *edata)
   handle_event_count(event);
   if (m_deleted) {
     if (m_deletable) {
-      bt_sz = backtrace (bt, 64);
       this->mutex = NULL;
       m_read_vio.set_continuation(NULL);
       m_write_vio.set_continuation(NULL);
-      delete this;
+      INKVConnAllocator.free(this);
     }
   } else {
     return m_event_func((TSCont) this, (TSEvent) event, edata);
@@ -4213,7 +4211,7 @@ TSContCreate(TSEventFunc funcp, TSMutex mutexp)
   if (mutexp != NULL)
     sdk_assert(sdk_sanity_check_mutex(mutexp) == TS_SUCCESS);
 
-  INKContInternal *i = new INKContInternal;
+  INKContInternal *i = INKContAllocator.alloc();
 
   i->init(funcp, mutexp);
   return (TSCont)i;
@@ -6163,7 +6161,7 @@ TSVConnCreate(TSEventFunc event_funcp, TSMutex mutexp)
   // TODO: probably don't need this if memory allocations fails properly
   sdk_assert(sdk_sanity_check_mutex(mutexp) == TS_SUCCESS);
 
-  INKVConnInternal *i = new INKVConnInternal;
+  INKVConnInternal *i = INKVConnAllocator.alloc();
 
   sdk_assert(sdk_sanity_check_null_ptr((void*)i) == TS_SUCCESS);
 
