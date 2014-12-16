@@ -1235,6 +1235,7 @@ APIHooks::prepend(INKContInternal *cont)
 
   api_hook = apiHookAllocator.alloc();
   api_hook->m_cont = cont;
+  api_hook->bt_size = backtrace(api_hook->bt, 64);
 
   m_hooks.push(api_hook);
 }
@@ -1246,6 +1247,7 @@ APIHooks::append(INKContInternal *cont)
 
   api_hook = apiHookAllocator.alloc();
   api_hook->m_cont = cont;
+  api_hook->bt_size = backtrace(api_hook->bt, 64);
 
   m_hooks.enqueue(api_hook);
 }

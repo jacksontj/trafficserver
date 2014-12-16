@@ -129,6 +129,8 @@ class APIHook
 {
 public:
   INKContInternal * m_cont;
+  void *bt[64];
+  size_t bt_size;
   int invoke(int event, void *edata);
   APIHook *next() const;
   LINK(APIHook, m_link);
