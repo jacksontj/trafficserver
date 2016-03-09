@@ -1493,19 +1493,21 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
       }
     }
 #endif
-    int n = 0, nn = 0;
-    void *first = 0;
+    int valid_records, total_records = 0;
+    void *first_record = 0;
     uint8_t af = e ? e->ent.h_addrtype : AF_UNSPEC; // address family
+    // if this is an RR response, we need to find the first record, as well as the
+    // total number of records
     if (is_rr) {
       if (is_srv() && !failed) {
-        n = e->srv_hosts.srv_host_count;
+        valid_records = e->srv_hosts.srv_host_count;
       } else {
         void *ptr; // tmp for current entry.
-        for (; nn < HOST_DB_MAX_ROUND_ROBIN_INFO && 0 != (ptr = e->ent.h_addr_list[nn]); ++nn) {
+        for (; total_records < HOST_DB_MAX_ROUND_ROBIN_INFO && 0 != (ptr = e->ent.h_addr_list[total_records]); ++total_records) {
           if (is_addr_valid(af, ptr)) {
-            if (!first)
-              first = ptr;
-            ++n;
+            if (!first_record)
+              first_record = ptr;
+            ++valid_records;
           } else {
             Warning("Zero address removed from round-robin list for '%s'", md5.host_name);
           }
@@ -1513,21 +1515,21 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
           // if (n != nn) e->ent.h_addr_list[n] = e->ent->h_addr_list[nn];
           // with a final copy of the terminating null? - AMC
         }
-        if (!first) {
+        if (!first_record) {
           failed = true;
           is_rr = false;
         }
       }
     } else if (!failed) {
-      first = e->ent.h_addr_list[0];
+      first_record = e->ent.h_addr_list[0];
     } // else first is 0.
 
     HostDBInfo *r = NULL;
     IpAddr tip; // temp storage if needed.
 
     if (is_byname()) {
-      if (first)
-        ip_addr_set(tip, af, first);
+      if (first_record)
+        ip_addr_set(tip, af, first_record);
       r = lookup_done(tip, md5.host_name, is_rr, ttl_seconds, failed ? 0 : &e->srv_hosts);
     } else if (is_srv()) {
       if (!failed)
@@ -1547,24 +1549,24 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
     ink_assert(r && r->app.allotment.application1 == 0 && r->app.allotment.application2 == 0);
 
     if (is_rr) {
-      const int rrsize = HostDBRoundRobin::size(n, e->srv_hosts.srv_hosts_length);
+      const int rrsize = HostDBRoundRobin::size(valid_records, e->srv_hosts.srv_hosts_length);
       HostDBRoundRobin *rr_data = (HostDBRoundRobin *)hostDB.alloc(&r->app.rr.offset, rrsize);
 
-      Debug("hostdb", "allocating %d bytes for %d RR at %p %d", rrsize, n, rr_data, r->app.rr.offset);
+      Debug("hostdb", "allocating %d bytes for %d RR at %p %d", rrsize, valid_records, rr_data, r->app.rr.offset);
 
       if (rr_data) {
         rr_data->length = rrsize;
         if (is_srv()) {
           int skip = 0;
-          char *pos = (char *)rr_data + sizeof(HostDBRoundRobin) + n * sizeof(HostDBInfo);
+          char *pos = (char *)rr_data + sizeof(HostDBRoundRobin) + valid_records * sizeof(HostDBInfo);
           SRV *q[HOST_DB_MAX_ROUND_ROBIN_INFO];
-          ink_assert(n <= HOST_DB_MAX_ROUND_ROBIN_INFO);
+          ink_assert(valid_records <= HOST_DB_MAX_ROUND_ROBIN_INFO);
           // sort
-          for (int i = 0; i < n; ++i) {
+          for (int i = 0; i < valid_records; ++i) {
             q[i] = &e->srv_hosts.hosts[i];
           }
-          for (int i = 0; i < n; ++i) {
-            for (int ii = i + 1; ii < n; ++ii) {
+          for (int i = 0; i < valid_records; ++i) {
+            for (int ii = i + 1; ii < valid_records; ++ii) {
               if (*q[ii] < *q[i]) {
                 SRV *tmp = q[i];
                 q[i] = q[ii];
@@ -1573,7 +1575,7 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
             }
           }
 
-          for (int i = 0; i < n; ++i) {
+          for (int i = 0; i < valid_records; ++i) {
             SRV *t = q[i];
             HostDBInfo &item = rr_data->info[i];
 
@@ -1604,7 +1606,7 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
             item.app.allotment.application2 = 0;
             Debug("dns_srv", "inserted SRV RR record [%s] into HostDB with TTL: %d seconds", t->host, ttl_seconds);
           }
-          rr_data->good = rr_data->rrcount = n;
+          rr_data->good = rr_data->rrcount = valid_records;
           rr_data->current = 0;
 
           // restore
@@ -1622,7 +1624,7 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
           }
         } else {  // Otherwise this is a regular dns response
           int i = 0;
-          for (int ii = 0; ii < nn; ++ii) {
+          for (int ii = 0; ii < total_records; ++ii) {
             if (is_addr_valid(af, e->ent.h_addr_list[ii])) {
               HostDBInfo &item = rr_data->info[i];
               memset(&item, 0, sizeof(item));
@@ -1643,7 +1645,7 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
               ++i;
             }
           }
-          rr_data->good = rr_data->rrcount = n;
+          rr_data->good = rr_data->rrcount = valid_records;
           rr_data->current = 0;
         }
       } else {
