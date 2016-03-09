@@ -1493,7 +1493,7 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
       }
     }
 #endif
-    int valid_records, total_records = 0;
+    int valid_records = 0;
     void *first_record = 0;
     uint8_t af = e ? e->ent.h_addrtype : AF_UNSPEC; // address family
     // if this is an RR response, we need to find the first record, as well as the
@@ -1503,17 +1503,22 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
         valid_records = e->srv_hosts.srv_host_count;
       } else {
         void *ptr; // tmp for current entry.
-        for (; total_records < HOST_DB_MAX_ROUND_ROBIN_INFO && 0 != (ptr = e->ent.h_addr_list[total_records]); ++total_records) {
+        for (int total_records = 0; total_records < HOST_DB_MAX_ROUND_ROBIN_INFO && 0 != (ptr = e->ent.h_addr_list[total_records]); ++total_records) {
           if (is_addr_valid(af, ptr)) {
-            if (!first_record)
+            if (!first_record) {
               first_record = ptr;
+            }
+            // If we have found some records which are invalid, lets just shuffle around them.
+            // This way we'll end up with e->ent.h_addr_list with all the valid responses at
+            // the first `valid_records` slots
+            if (valid_records != total_records) {
+              e->ent.h_addr_list[valid_records] = e->ent.h_addr_list[total_records];
+            }
+
             ++valid_records;
           } else {
             Warning("Zero address removed from round-robin list for '%s'", md5.host_name);
           }
-          // what's the point of @a n? Should there be something like
-          // if (n != nn) e->ent.h_addr_list[n] = e->ent->h_addr_list[nn];
-          // with a final copy of the terminating null? - AMC
         }
         if (!first_record) {
           failed = true;
@@ -1623,26 +1628,22 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
             }
           }
         } else {  // Otherwise this is a regular dns response
-          int i = 0;
-          for (int ii = 0; ii < total_records; ++ii) {
-            if (is_addr_valid(af, e->ent.h_addr_list[ii])) {
-              HostDBInfo &item = rr_data->info[i];
-              memset(&item, 0, sizeof(item));
-              ip_addr_set(item.ip(), af, e->ent.h_addr_list[ii]);
-              item.full = 1;
-              item.round_robin = 0;
-              item.round_robin_elt = 1;
-              item.reverse_dns = 0;
-              item.is_srv = 0;
-              item.md5_high = r->md5_high;
-              item.md5_low = r->md5_low;
-              item.md5_low_low = r->md5_low_low;
-              item.hostname_offset = 0;
-              if (!restore_info(&item, old_r, old_info, old_rr_data)) {
-                item.app.allotment.application1 = 0;
-                item.app.allotment.application2 = 0;
-              }
-              ++i;
+          for (int i = 0; i < valid_records; ++i) {
+            HostDBInfo &item = rr_data->info[i];
+            memset(&item, 0, sizeof(item));
+            ip_addr_set(item.ip(), af, e->ent.h_addr_list[i]);
+            item.full = 1;
+            item.round_robin = 0;
+            item.round_robin_elt = 1;
+            item.reverse_dns = 0;
+            item.is_srv = 0;
+            item.md5_high = r->md5_high;
+            item.md5_low = r->md5_low;
+            item.md5_low_low = r->md5_low_low;
+            item.hostname_offset = 0;
+            if (!restore_info(&item, old_r, old_info, old_rr_data)) {
+              item.app.allotment.application1 = 0;
+              item.app.allotment.application2 = 0;
             }
           }
           rr_data->good = rr_data->rrcount = valid_records;
