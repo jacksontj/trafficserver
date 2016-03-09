@@ -1553,18 +1553,17 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
 
       if (rr_data) {
         rr_data->length = rrsize;
-        int i = 0, ii = 0;
         if (is_srv()) {
           int skip = 0;
           char *pos = (char *)rr_data + sizeof(HostDBRoundRobin) + n * sizeof(HostDBInfo);
           SRV *q[HOST_DB_MAX_ROUND_ROBIN_INFO];
           ink_assert(n <= HOST_DB_MAX_ROUND_ROBIN_INFO);
           // sort
-          for (i = 0; i < n; ++i) {
+          for (int i = 0; i < n; ++i) {
             q[i] = &e->srv_hosts.hosts[i];
           }
-          for (i = 0; i < n; ++i) {
-            for (ii = i + 1; ii < n; ++ii) {
+          for (int i = 0; i < n; ++i) {
+            for (int ii = i + 1; ii < n; ++ii) {
               if (*q[ii] < *q[i]) {
                 SRV *tmp = q[i];
                 q[i] = q[ii];
@@ -1573,7 +1572,7 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
             }
           }
 
-          for (i = 0; i < n; ++i) {
+          for (int i = 0; i < n; ++i) {
             SRV *t = q[i];
             HostDBInfo &item = rr_data->info[i];
 
@@ -1609,8 +1608,8 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
 
           // restore
           if (old_rr_data) {
-            for (i = 0; i < rr_data->rrcount; ++i) {
-              for (ii = 0; ii < old_rr_data->rrcount; ++ii) {
+            for (int i = 0; i < rr_data->rrcount; ++i) {
+              for (int ii = 0; ii < old_rr_data->rrcount; ++ii) {
                 if (rr_data->info[i].data.srv.key == old_rr_data->info[ii].data.srv.key) {
                   char *new_host = rr_data->info[i].srvname(rr_data);
                   char *old_host = old_rr_data->info[ii].srvname(old_rr_data);
@@ -1621,7 +1620,8 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
             }
           }
         } else {
-          for (ii = 0; ii < nn; ++ii) {
+          int i = 0;
+          for (int ii = 0; ii < nn; ++ii) {
             if (is_addr_valid(af, e->ent.h_addr_list[ii])) {
               HostDBInfo &item = rr_data->info[i];
               memset(&item, 0, sizeof(item));
