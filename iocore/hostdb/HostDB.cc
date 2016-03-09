@@ -1411,6 +1411,7 @@ HostDBContinuation::dnsPendingEvent(int event, Event *e)
   }
 }
 
+// for a new HostDBInfo `r`, "inherit" from the old version of yourself if it exists in `old_rr_data`
 static int
 restore_info(HostDBInfo *r, HostDBInfo *old_r, HostDBInfo &old_info, HostDBRoundRobin *old_rr_data)
 {
@@ -1619,7 +1620,7 @@ HostDBContinuation::dnsEvent(int event, HostEnt *e)
               }
             }
           }
-        } else {
+        } else {  // Otherwise this is a regular dns response
           int i = 0;
           for (int ii = 0; ii < nn; ++ii) {
             if (is_addr_valid(af, e->ent.h_addr_list[ii])) {
