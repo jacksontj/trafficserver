@@ -584,7 +584,7 @@ HostDBContinuation::refresh_MD5()
 static bool
 reply_to_cont(Continuation *cont, HostDBInfo *r, bool is_srv = false)
 {
-  if (r == NULL || r->is_srv != is_srv || r->failed()) {
+  if (r == NULL || r->is_srv != is_srv || r->is_failed()) {
     cont->handleEvent(is_srv ? EVENT_SRV_LOOKUP : EVENT_HOST_DB_LOOKUP, NULL);
     return false;
   }
@@ -683,7 +683,7 @@ probe(ProxyMutex *mutex, HostDBMD5 const &md5, bool ignore_timeout)
       if (r->is_deleted()) {
         Debug("hostdb", "HostDB entry was set as deleted");
         return NULL;
-      } else if (r->failed()) {
+      } else if (r->is_failed()) {
         Debug("hostdb", "'%.*s' failed", md5.host_len, md5.host_name);
         if (r->is_ip_fail_timeout()) {
           Debug("hostdb", "fail timeout %u", r->ip_interval());
@@ -804,7 +804,7 @@ HostDBProcessor::getby(Continuation *cont, const char *hostname, int len, sockad
         // If we can get the lock and a level 1 probe succeeds, return
         HostDBInfo *r = probe(bmutex, md5, aforce_dns);
         if (r) {
-          if (r->failed() && hostname)
+          if (r->is_failed() && hostname)
             loop = check_for_retry(md5.db_mark, host_res_style);
           if (!loop) {
             // No retry -> final result. Return it.
@@ -1002,7 +1002,7 @@ HostDBProcessor::getbyname_imm(Continuation *cont, process_hostdb_info_pfn proce
       // do a level 1 probe for immediate result.
       HostDBInfo *r = probe(bucket_mutex, md5, false);
       if (r) {
-        if (r->failed()) // fail, see if we should retry with alternate
+        if (r->is_failed()) // fail, see if we should retry with alternate
           loop = check_for_retry(md5.db_mark, opt.host_res_style);
         if (!loop) {
           // No retry -> final result. Return it.
@@ -1869,7 +1869,7 @@ HostDBContinuation::iterateEvent(int event, Event *e)
       for (unsigned int l = 0; l < hostDB.levels; ++l) {
         HostDBInfo *r =
           reinterpret_cast<HostDBInfo *>(hostDB.data + hostDB.level_offset[l] + hostDB.bucketsize[l] * current_iterate_pos);
-        if (!r->deleted && !r->failed()) {
+        if (!r->deleted && !r->is_failed()) {
           action.continuation->handleEvent(EVENT_INTERVAL, static_cast<void *>(r));
         }
       }

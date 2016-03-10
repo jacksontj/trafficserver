@@ -171,7 +171,7 @@ struct HostDBInfo {
 
   /** Indicate that the HostDBInfo is BAD and should be deleted. */
   void
-  bad()
+  is_bad()
   {
     full = 0;
   }
@@ -278,7 +278,7 @@ struct HostDBInfo {
    * Given the current time `now` and the fail_window, determine if this real is alive
    */
   bool
-  alive(ink_time_t now, int32_t fail_window)
+  is_alive(ink_time_t now, int32_t fail_window)
   {
     unsigned int last_failure = app.http_data.last_failure;
 
@@ -297,11 +297,13 @@ struct HostDBInfo {
       return false;
     }
   }
+
   bool
-  failed()
+  is_failed()
   {
     return !((is_srv && data.srv.srv_offset) || (reverse_dns && data.hostname_offset) || ats_is_ip(ip()));
   }
+
   void
   set_failed()
   {
@@ -318,6 +320,7 @@ struct HostDBInfo {
   {
     deleted = 1;
   }
+
   bool
   is_deleted() const
   {

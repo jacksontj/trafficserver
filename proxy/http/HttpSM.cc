@@ -2018,7 +2018,7 @@ HttpSM::process_srv_info(HostDBInfo *r)
 void
 HttpSM::process_hostdb_info(HostDBInfo *r)
 {
-  if (r && !r->failed()) {
+  if (r && !r->is_failed()) {
     ink_time_t now = ink_cluster_time();
     HostDBInfo *ret = NULL;
     t_state.dns_info.lookup_success = true;

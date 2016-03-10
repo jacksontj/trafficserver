@@ -308,7 +308,7 @@ HostDBRoundRobin::select_best_http(sockaddr const *client_ip, ink_time_t now, in
     // Check that the host we selected is alive
     for (int i = 0; i < good; i++) {
       best_any = current++ % good;
-      if (info[best_any].alive(now, fail_window)) {
+      if (info[best_any].is_alive(now, fail_window)) {
         best_up = best_any;
         break;
       }
@@ -322,7 +322,7 @@ HostDBRoundRobin::select_best_http(sockaddr const *client_ip, ink_time_t now, in
     }
     for (int i = 0; i < good; i++) {
       best_any = current++ % good;
-      if (info[best_any].alive(now, fail_window)) {
+      if (info[best_any].is_alive(now, fail_window)) {
         best_up = best_any;
         break;
       }
@@ -340,7 +340,7 @@ HostDBRoundRobin::select_best_http(sockaddr const *client_ip, ink_time_t now, in
         best_any = i;
         best_hash_any = h;
       }
-      if (info[i].alive(now, fail_window)) {
+      if (info[i].is_alive(now, fail_window)) {
         if (best_hash_up <= h) {
           best_up = i;
           best_hash_up = h;
@@ -381,7 +381,7 @@ HostDBRoundRobin::select_best_srv(char *target, InkRand *rand, ink_time_t now, i
 
   do {
     // if the real isn't alive-- exclude it from selection
-    if (info[i].alive(now, fail_window)) {
+    if (info[i].is_alive(now, fail_window)) {
       continue;
     }
 
