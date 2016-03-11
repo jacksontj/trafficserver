@@ -3,4 +3,3 @@
 #define LOCK ck_spinlock_ticket_lock_pb(&lock, 0)
 #define UNLOCK ck_spinlock_ticket_unlock(&lock)
 #define LOCKED ck_spinlock_ticket_locked(&lock)
-

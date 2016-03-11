@@ -43,25 +43,25 @@
  */
 #if defined(CK_MD_TSO) && (defined(__x86__) || defined(__x86_64__))
 #if defined(CK_F_PR_FAA_32) && defined(CK_F_PR_INC_16) && defined(CK_F_PR_CAS_32)
-#define CK_SPINLOCK_TICKET_TYPE		uint32_t
-#define CK_SPINLOCK_TICKET_TYPE_BASE	uint16_t
-#define CK_SPINLOCK_TICKET_INC(x)	ck_pr_inc_16(x)
+#define CK_SPINLOCK_TICKET_TYPE uint32_t
+#define CK_SPINLOCK_TICKET_TYPE_BASE uint16_t
+#define CK_SPINLOCK_TICKET_INC(x) ck_pr_inc_16(x)
 #define CK_SPINLOCK_TICKET_CAS(x, y, z) ck_pr_cas_32(x, y, z)
-#define CK_SPINLOCK_TICKET_FAA(x, y)	ck_pr_faa_32(x, y)
-#define CK_SPINLOCK_TICKET_LOAD(x)	ck_pr_load_32(x)
-#define CK_SPINLOCK_TICKET_INCREMENT	(0x00010000UL)
-#define CK_SPINLOCK_TICKET_MASK		(0xFFFFUL)
-#define CK_SPINLOCK_TICKET_SHIFT	(16)
+#define CK_SPINLOCK_TICKET_FAA(x, y) ck_pr_faa_32(x, y)
+#define CK_SPINLOCK_TICKET_LOAD(x) ck_pr_load_32(x)
+#define CK_SPINLOCK_TICKET_INCREMENT (0x00010000UL)
+#define CK_SPINLOCK_TICKET_MASK (0xFFFFUL)
+#define CK_SPINLOCK_TICKET_SHIFT (16)
 #elif defined(CK_F_PR_FAA_64) && defined(CK_F_PR_INC_32) && defined(CK_F_PR_CAS_64)
-#define CK_SPINLOCK_TICKET_TYPE		uint64_t
-#define CK_SPINLOCK_TICKET_TYPE_BASE	uint32_t
-#define CK_SPINLOCK_TICKET_INC(x)	ck_pr_inc_32(x)
+#define CK_SPINLOCK_TICKET_TYPE uint64_t
+#define CK_SPINLOCK_TICKET_TYPE_BASE uint32_t
+#define CK_SPINLOCK_TICKET_INC(x) ck_pr_inc_32(x)
 #define CK_SPINLOCK_TICKET_CAS(x, y, z) ck_pr_cas_64(x, y, z)
-#define CK_SPINLOCK_TICKET_FAA(x, y)	ck_pr_faa_64(x, y)
-#define CK_SPINLOCK_TICKET_LOAD(x)	ck_pr_load_64(x)
-#define CK_SPINLOCK_TICKET_INCREMENT	(0x0000000100000000ULL)
-#define CK_SPINLOCK_TICKET_MASK		(0xFFFFFFFFULL)
-#define CK_SPINLOCK_TICKET_SHIFT	(32)
+#define CK_SPINLOCK_TICKET_FAA(x, y) ck_pr_faa_64(x, y)
+#define CK_SPINLOCK_TICKET_LOAD(x) ck_pr_load_64(x)
+#define CK_SPINLOCK_TICKET_INCREMENT (0x0000000100000000ULL)
+#define CK_SPINLOCK_TICKET_MASK (0xFFFFFFFFULL)
+#define CK_SPINLOCK_TICKET_SHIFT (32)
 #endif
 #endif /* CK_MD_TSO */
 
@@ -69,111 +69,107 @@
 #define CK_F_SPINLOCK_TICKET_TRYLOCK
 
 struct ck_spinlock_ticket {
-	CK_SPINLOCK_TICKET_TYPE value;
+  CK_SPINLOCK_TICKET_TYPE value;
 };
 typedef struct ck_spinlock_ticket ck_spinlock_ticket_t;
-#define CK_SPINLOCK_TICKET_INITIALIZER { .value = 0 }
+#define CK_SPINLOCK_TICKET_INITIALIZER \
+  {                                    \
+    .value = 0                         \
+  }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_init(struct ck_spinlock_ticket *ticket)
 {
-
-	ticket->value = 0;
-	ck_pr_barrier();
-	return;
+  ticket->value = 0;
+  ck_pr_barrier();
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_ticket_locked(struct ck_spinlock_ticket *ticket)
 {
-	CK_SPINLOCK_TICKET_TYPE request, position;
+  CK_SPINLOCK_TICKET_TYPE request, position;
 
-	ck_pr_fence_load();
+  ck_pr_fence_load();
 
-	request = CK_SPINLOCK_TICKET_LOAD(&ticket->value);
-	position = request & CK_SPINLOCK_TICKET_MASK;
-	request >>= CK_SPINLOCK_TICKET_SHIFT;
+  request = CK_SPINLOCK_TICKET_LOAD(&ticket->value);
+  position = request & CK_SPINLOCK_TICKET_MASK;
+  request >>= CK_SPINLOCK_TICKET_SHIFT;
 
-	return request != position;
+  return request != position;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_lock(struct ck_spinlock_ticket *ticket)
 {
-	CK_SPINLOCK_TICKET_TYPE request, position;
+  CK_SPINLOCK_TICKET_TYPE request, position;
 
-	/* Get our ticket number and set next ticket number. */
-	request = CK_SPINLOCK_TICKET_FAA(&ticket->value,
-	    CK_SPINLOCK_TICKET_INCREMENT);
+  /* Get our ticket number and set next ticket number. */
+  request = CK_SPINLOCK_TICKET_FAA(&ticket->value, CK_SPINLOCK_TICKET_INCREMENT);
 
-	position = request & CK_SPINLOCK_TICKET_MASK;
-	request >>= CK_SPINLOCK_TICKET_SHIFT;
+  position = request & CK_SPINLOCK_TICKET_MASK;
+  request >>= CK_SPINLOCK_TICKET_SHIFT;
 
-	while (request != position) {
-		ck_pr_stall();
-		position = CK_SPINLOCK_TICKET_LOAD(&ticket->value) &
-		    CK_SPINLOCK_TICKET_MASK;
-	}
+  while (request != position) {
+    ck_pr_stall();
+    position = CK_SPINLOCK_TICKET_LOAD(&ticket->value) & CK_SPINLOCK_TICKET_MASK;
+  }
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_lock_pb(struct ck_spinlock_ticket *ticket, unsigned int c)
 {
-	CK_SPINLOCK_TICKET_TYPE request, position;
-	ck_backoff_t backoff;
+  CK_SPINLOCK_TICKET_TYPE request, position;
+  ck_backoff_t backoff;
 
-	/* Get our ticket number and set next ticket number. */
-	request = CK_SPINLOCK_TICKET_FAA(&ticket->value,
-	    CK_SPINLOCK_TICKET_INCREMENT);
+  /* Get our ticket number and set next ticket number. */
+  request = CK_SPINLOCK_TICKET_FAA(&ticket->value, CK_SPINLOCK_TICKET_INCREMENT);
 
-	position = request & CK_SPINLOCK_TICKET_MASK;
-	request >>= CK_SPINLOCK_TICKET_SHIFT;
+  position = request & CK_SPINLOCK_TICKET_MASK;
+  request >>= CK_SPINLOCK_TICKET_SHIFT;
 
-	while (request != position) {
-		ck_pr_stall();
-		position = CK_SPINLOCK_TICKET_LOAD(&ticket->value) &
-		    CK_SPINLOCK_TICKET_MASK;
+  while (request != position) {
+    ck_pr_stall();
+    position = CK_SPINLOCK_TICKET_LOAD(&ticket->value) & CK_SPINLOCK_TICKET_MASK;
 
-		backoff = (request - position) & CK_SPINLOCK_TICKET_MASK;
-		backoff <<= c;
-		ck_backoff_eb(&backoff);
-	}
+    backoff = (request - position) & CK_SPINLOCK_TICKET_MASK;
+    backoff <<= c;
+    ck_backoff_eb(&backoff);
+  }
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_ticket_trylock(struct ck_spinlock_ticket *ticket)
 {
-	CK_SPINLOCK_TICKET_TYPE snapshot, request, position;
+  CK_SPINLOCK_TICKET_TYPE snapshot, request, position;
 
-	snapshot = CK_SPINLOCK_TICKET_LOAD(&ticket->value);
-	position = snapshot & CK_SPINLOCK_TICKET_MASK;
-	request = snapshot >> CK_SPINLOCK_TICKET_SHIFT;
+  snapshot = CK_SPINLOCK_TICKET_LOAD(&ticket->value);
+  position = snapshot & CK_SPINLOCK_TICKET_MASK;
+  request = snapshot >> CK_SPINLOCK_TICKET_SHIFT;
 
-	if (position != request)
-		return false;
+  if (position != request)
+    return false;
 
-	if (CK_SPINLOCK_TICKET_CAS(&ticket->value,
-	    snapshot, snapshot + CK_SPINLOCK_TICKET_INCREMENT) == false) {
-		return false;
-	}
+  if (CK_SPINLOCK_TICKET_CAS(&ticket->value, snapshot, snapshot + CK_SPINLOCK_TICKET_INCREMENT) == false) {
+    return false;
+  }
 
-	ck_pr_fence_acquire();
-	return true;
+  ck_pr_fence_acquire();
+  return true;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_unlock(struct ck_spinlock_ticket *ticket)
 {
-
-	ck_pr_fence_release();
-	CK_SPINLOCK_TICKET_INC((CK_SPINLOCK_TICKET_TYPE_BASE *)(void *)&ticket->value);
-	return;
+  ck_pr_fence_release();
+  CK_SPINLOCK_TICKET_INC((CK_SPINLOCK_TICKET_TYPE_BASE *)(void *)&ticket->value);
+  return;
 }
 
 #undef CK_SPINLOCK_TICKET_TYPE
@@ -190,109 +186,108 @@ ck_spinlock_ticket_unlock(struct ck_spinlock_ticket *ticket)
  * invalidation of current from the cache due to incoming lock requests.
  */
 struct ck_spinlock_ticket {
-	unsigned int next;
-	unsigned int position;
+  unsigned int next;
+  unsigned int position;
 };
 typedef struct ck_spinlock_ticket ck_spinlock_ticket_t;
 
-#define CK_SPINLOCK_TICKET_INITIALIZER {.next = 0, .position = 0}
+#define CK_SPINLOCK_TICKET_INITIALIZER \
+  {                                    \
+    .next = 0, .position = 0           \
+  }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_init(struct ck_spinlock_ticket *ticket)
 {
+  ticket->next = 0;
+  ticket->position = 0;
+  ck_pr_barrier();
 
-	ticket->next = 0;
-	ticket->position = 0;
-	ck_pr_barrier();
-
-	return;
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_ticket_locked(struct ck_spinlock_ticket *ticket)
 {
-	unsigned int request;
+  unsigned int request;
 
-	ck_pr_fence_load();
-	request = ck_pr_load_uint(&ticket->next);
-	ck_pr_fence_load();
-	return ck_pr_load_uint(&ticket->position) != request;
+  ck_pr_fence_load();
+  request = ck_pr_load_uint(&ticket->next);
+  ck_pr_fence_load();
+  return ck_pr_load_uint(&ticket->position) != request;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_lock(struct ck_spinlock_ticket *ticket)
 {
-	unsigned int request;
+  unsigned int request;
 
-	/* Get our ticket number and set next ticket number. */
-	request = ck_pr_faa_uint(&ticket->next, 1);
+  /* Get our ticket number and set next ticket number. */
+  request = ck_pr_faa_uint(&ticket->next, 1);
 
-	/*
-	 * Busy-wait until our ticket number is current.
-	 * We can get away without a fence here assuming
-	 * our position counter does not overflow.
-	 */
-	while (ck_pr_load_uint(&ticket->position) != request)
-		ck_pr_stall();
+  /*
+   * Busy-wait until our ticket number is current.
+   * We can get away without a fence here assuming
+   * our position counter does not overflow.
+   */
+  while (ck_pr_load_uint(&ticket->position) != request)
+    ck_pr_stall();
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_lock_pb(struct ck_spinlock_ticket *ticket, unsigned int c)
 {
-	ck_backoff_t backoff;
-	unsigned int request, position;
+  ck_backoff_t backoff;
+  unsigned int request, position;
 
-	request = ck_pr_faa_uint(&ticket->next, 1);
+  request = ck_pr_faa_uint(&ticket->next, 1);
 
-	for (;;) {
-		position = ck_pr_load_uint(&ticket->position);
-		if (position == request)
-			break;
+  for (;;) {
+    position = ck_pr_load_uint(&ticket->position);
+    if (position == request)
+      break;
 
-		backoff = request - position;
-		backoff <<= c;
+    backoff = request - position;
+    backoff <<= c;
 
-		/*
-		 * Ideally, back-off from generating cache traffic for at least
-		 * the amount of time necessary for the number of pending lock
-		 * acquisition and relinquish operations (assuming an empty
-		 * critical section).
-		 */
-		ck_backoff_eb(&backoff);
-	}
+    /*
+     * Ideally, back-off from generating cache traffic for at least
+     * the amount of time necessary for the number of pending lock
+     * acquisition and relinquish operations (assuming an empty
+     * critical section).
+     */
+    ck_backoff_eb(&backoff);
+  }
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_ticket_unlock(struct ck_spinlock_ticket *ticket)
 {
-	unsigned int update;
+  unsigned int update;
 
-	ck_pr_fence_release();
+  ck_pr_fence_release();
 
-	/*
-	 * Update current ticket value so next lock request can proceed.
-	 * Overflow behavior is assumed to be roll-over, in which case,
-	 * it is only an issue if there are 2^32 pending lock requests.
-	 */
-	update = ck_pr_load_uint(&ticket->position);
-	ck_pr_store_uint(&ticket->position, update + 1);
-	return;
+  /*
+   * Update current ticket value so next lock request can proceed.
+   * Overflow behavior is assumed to be roll-over, in which case,
+   * it is only an issue if there are 2^32 pending lock requests.
+   */
+  update = ck_pr_load_uint(&ticket->position);
+  ck_pr_store_uint(&ticket->position, update + 1);
+  return;
 }
 #endif /* !CK_F_SPINLOCK_TICKET_TRYLOCK */
 
-CK_ELIDE_PROTOTYPE(ck_spinlock_ticket, ck_spinlock_ticket_t,
-    ck_spinlock_ticket_locked, ck_spinlock_ticket_lock,
-    ck_spinlock_ticket_locked, ck_spinlock_ticket_unlock)
+CK_ELIDE_PROTOTYPE(ck_spinlock_ticket, ck_spinlock_ticket_t, ck_spinlock_ticket_locked, ck_spinlock_ticket_lock,
+                   ck_spinlock_ticket_locked, ck_spinlock_ticket_unlock)
 
-CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock_ticket, ck_spinlock_ticket_t,
-    ck_spinlock_ticket_locked, ck_spinlock_ticket_trylock)
+CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock_ticket, ck_spinlock_ticket_t, ck_spinlock_ticket_locked, ck_spinlock_ticket_trylock)
 
 #endif /* CK_F_SPINLOCK_TICKET */
 #endif /* _CK_SPINLOCK_TICKET_H */
-

@@ -33,17 +33,20 @@
 #include <stddef.h>
 
 struct ck_stack_entry {
-	struct ck_stack_entry *next;
+  struct ck_stack_entry *next;
 };
 typedef struct ck_stack_entry ck_stack_entry_t;
 
 struct ck_stack {
-	struct ck_stack_entry *head;
-	char *generation CK_CC_PACKED;
+  struct ck_stack_entry *head;
+  char *generation CK_CC_PACKED;
 } CK_CC_ALIASED;
 typedef struct ck_stack ck_stack_t;
 
-#define CK_STACK_INITIALIZER { NULL, NULL }
+#define CK_STACK_INITIALIZER \
+  {                          \
+    NULL, NULL               \
+  }
 
 #ifndef CK_F_STACK_PUSH_UPMC
 #define CK_F_STACK_PUSH_UPMC
@@ -53,18 +56,18 @@ typedef struct ck_stack ck_stack_t;
 CK_CC_INLINE static void
 ck_stack_push_upmc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
-	struct ck_stack_entry *stack;
+  struct ck_stack_entry *stack;
 
-	stack = ck_pr_load_ptr(&target->head);
-	entry->next = stack;
-	ck_pr_fence_store();
+  stack = ck_pr_load_ptr(&target->head);
+  entry->next = stack;
+  ck_pr_fence_store();
 
-	while (ck_pr_cas_ptr_value(&target->head, stack, entry, &stack) == false) {
-		entry->next = stack;
-		ck_pr_fence_store();
-	}
+  while (ck_pr_cas_ptr_value(&target->head, stack, entry, &stack) == false) {
+    entry->next = stack;
+    ck_pr_fence_store();
+  }
 
-	return;
+  return;
 }
 #endif /* CK_F_STACK_PUSH_UPMC */
 
@@ -77,13 +80,13 @@ ck_stack_push_upmc(struct ck_stack *target, struct ck_stack_entry *entry)
 CK_CC_INLINE static bool
 ck_stack_trypush_upmc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
-	struct ck_stack_entry *stack;
+  struct ck_stack_entry *stack;
 
-	stack = ck_pr_load_ptr(&target->head);
-	entry->next = stack;
-	ck_pr_fence_store();
+  stack = ck_pr_load_ptr(&target->head);
+  entry->next = stack;
+  ck_pr_fence_store();
 
-	return ck_pr_cas_ptr(&target->head, stack, entry);
+  return ck_pr_cas_ptr(&target->head, stack, entry);
 }
 #endif /* CK_F_STACK_TRYPUSH_UPMC */
 
@@ -95,23 +98,23 @@ ck_stack_trypush_upmc(struct ck_stack *target, struct ck_stack_entry *entry)
 CK_CC_INLINE static struct ck_stack_entry *
 ck_stack_pop_upmc(struct ck_stack *target)
 {
-	struct ck_stack_entry *entry, *next;
+  struct ck_stack_entry *entry, *next;
 
-	entry = ck_pr_load_ptr(&target->head);
-	if (entry == NULL)
-		return NULL;
+  entry = ck_pr_load_ptr(&target->head);
+  if (entry == NULL)
+    return NULL;
 
-	ck_pr_fence_load();
-	next = entry->next;
-	while (ck_pr_cas_ptr_value(&target->head, entry, next, &entry) == false) {
-		if (entry == NULL)
-			break;
+  ck_pr_fence_load();
+  next = entry->next;
+  while (ck_pr_cas_ptr_value(&target->head, entry, next, &entry) == false) {
+    if (entry == NULL)
+      break;
 
-		ck_pr_fence_load();
-		next = entry->next;
-	}
+    ck_pr_fence_load();
+    next = entry->next;
+  }
 
-	return entry;
+  return entry;
 }
 #endif
 
@@ -126,19 +129,19 @@ ck_stack_pop_upmc(struct ck_stack *target)
 CK_CC_INLINE static bool
 ck_stack_trypop_upmc(struct ck_stack *target, struct ck_stack_entry **r)
 {
-	struct ck_stack_entry *entry;
+  struct ck_stack_entry *entry;
 
-	entry = ck_pr_load_ptr(&target->head);
-	if (entry == NULL)
-		return false;
+  entry = ck_pr_load_ptr(&target->head);
+  if (entry == NULL)
+    return false;
 
-	ck_pr_fence_load();
-	if (ck_pr_cas_ptr(&target->head, entry, entry->next) == true) {
-		*r = entry;
-		return true;
-	}
+  ck_pr_fence_load();
+  if (ck_pr_cas_ptr(&target->head, entry, entry->next) == true) {
+    *r = entry;
+    return true;
+  }
 
-	return false;
+  return false;
 }
 #endif /* CK_F_STACK_TRYPOP_UPMC */
 
@@ -150,11 +153,11 @@ ck_stack_trypop_upmc(struct ck_stack *target, struct ck_stack_entry **r)
 CK_CC_INLINE static struct ck_stack_entry *
 ck_stack_batch_pop_upmc(struct ck_stack *target)
 {
-	struct ck_stack_entry *entry;
+  struct ck_stack_entry *entry;
 
-	entry = ck_pr_fas_ptr(&target->head, NULL);
-	ck_pr_fence_load();
-	return entry;
+  entry = ck_pr_fas_ptr(&target->head, NULL);
+  ck_pr_fence_load();
+  return entry;
 }
 #endif /* CK_F_STACK_BATCH_POP_UPMC */
 
@@ -166,9 +169,8 @@ ck_stack_batch_pop_upmc(struct ck_stack *target)
 CK_CC_INLINE static void
 ck_stack_push_mpmc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
-
-	ck_stack_push_upmc(target, entry);
-	return;
+  ck_stack_push_upmc(target, entry);
+  return;
 }
 #endif /* CK_F_STACK_PUSH_MPMC */
 
@@ -180,8 +182,7 @@ ck_stack_push_mpmc(struct ck_stack *target, struct ck_stack_entry *entry)
 CK_CC_INLINE static bool
 ck_stack_trypush_mpmc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
-
-	return ck_stack_trypush_upmc(target, entry);
+  return ck_stack_trypush_upmc(target, entry);
 }
 #endif /* CK_F_STACK_TRYPUSH_MPMC */
 
@@ -194,29 +195,29 @@ ck_stack_trypush_mpmc(struct ck_stack *target, struct ck_stack_entry *entry)
 CK_CC_INLINE static struct ck_stack_entry *
 ck_stack_pop_mpmc(struct ck_stack *target)
 {
-	struct ck_stack original, update;
+  struct ck_stack original, update;
 
-	original.generation = ck_pr_load_ptr(&target->generation);
-	original.head = ck_pr_load_ptr(&target->head);
-	if (original.head == NULL)
-		return NULL;
+  original.generation = ck_pr_load_ptr(&target->generation);
+  original.head = ck_pr_load_ptr(&target->head);
+  if (original.head == NULL)
+    return NULL;
 
-	ck_pr_fence_load();
+  ck_pr_fence_load();
 
-	update.generation = original.generation + 1;
-	update.head = original.head->next;
+  update.generation = original.generation + 1;
+  update.head = original.head->next;
 
-	while (ck_pr_cas_ptr_2_value(target, &original, &update, &original) == false) {
-		if (original.head == NULL)
-			return NULL;
+  while (ck_pr_cas_ptr_2_value(target, &original, &update, &original) == false) {
+    if (original.head == NULL)
+      return NULL;
 
-		update.generation = original.generation + 1;
+    update.generation = original.generation + 1;
 
-		ck_pr_fence_load();
-		update.head = original.head->next;
-	}
+    ck_pr_fence_load();
+    update.head = original.head->next;
+  }
 
-	return original.head;
+  return original.head;
 }
 #endif /* CK_F_STACK_POP_MPMC */
 
@@ -225,23 +226,23 @@ ck_stack_pop_mpmc(struct ck_stack *target)
 CK_CC_INLINE static bool
 ck_stack_trypop_mpmc(struct ck_stack *target, struct ck_stack_entry **r)
 {
-	struct ck_stack original, update;
+  struct ck_stack original, update;
 
-	original.generation = ck_pr_load_ptr(&target->generation);
-	original.head = ck_pr_load_ptr(&target->head);
-	if (original.head == NULL)
-		return false;
+  original.generation = ck_pr_load_ptr(&target->generation);
+  original.head = ck_pr_load_ptr(&target->head);
+  if (original.head == NULL)
+    return false;
 
-	update.generation = original.generation + 1;
-	ck_pr_fence_load();
-	update.head = original.head->next;
+  update.generation = original.generation + 1;
+  ck_pr_fence_load();
+  update.head = original.head->next;
 
-	if (ck_pr_cas_ptr_2_value(target, &original, &update, &original) == true) {
-		*r = original.head;
-		return true;
-	}
+  if (ck_pr_cas_ptr_2_value(target, &original, &update, &original) == true) {
+    *r = original.head;
+    return true;
+  }
 
-	return false;
+  return false;
 }
 #endif /* CK_F_STACK_TRYPOP_MPMC */
 #endif /* CK_F_PR_CAS_PTR_2_VALUE */
@@ -255,8 +256,7 @@ ck_stack_trypop_mpmc(struct ck_stack *target, struct ck_stack_entry **r)
 CK_CC_INLINE static struct ck_stack_entry *
 ck_stack_batch_pop_mpmc(struct ck_stack *target)
 {
-
-	return ck_stack_batch_pop_upmc(target);
+  return ck_stack_batch_pop_upmc(target);
 }
 #endif /* CK_F_STACK_BATCH_POP_MPMC */
 
@@ -268,15 +268,15 @@ ck_stack_batch_pop_mpmc(struct ck_stack *target)
 CK_CC_INLINE static void
 ck_stack_push_mpnc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
-	struct ck_stack_entry *stack;
+  struct ck_stack_entry *stack;
 
-	entry->next = NULL;
-	ck_pr_fence_store();
-	stack = ck_pr_fas_ptr(&target->head, entry);
-	ck_pr_store_ptr(&entry->next, stack);
-	ck_pr_fence_store();
+  entry->next = NULL;
+  ck_pr_fence_store();
+  stack = ck_pr_fas_ptr(&target->head, entry);
+  ck_pr_store_ptr(&entry->next, stack);
+  ck_pr_fence_store();
 
-	return;
+  return;
 }
 #endif /* CK_F_STACK_PUSH_MPNC */
 
@@ -286,11 +286,10 @@ ck_stack_push_mpnc(struct ck_stack *target, struct ck_stack_entry *entry)
 CK_CC_INLINE static void
 ck_stack_push_spnc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
+  entry->next = target->head;
+  target->head = entry;
 
-	entry->next = target->head;
-	target->head = entry;
-
-	return;
+  return;
 }
 
 /*
@@ -299,15 +298,15 @@ ck_stack_push_spnc(struct ck_stack *target, struct ck_stack_entry *entry)
 CK_CC_INLINE static struct ck_stack_entry *
 ck_stack_pop_npsc(struct ck_stack *target)
 {
-	struct ck_stack_entry *n;
+  struct ck_stack_entry *n;
 
-	if (target->head == NULL)
-		return NULL;
+  if (target->head == NULL)
+    return NULL;
 
-	n = target->head;
-	target->head = n->next;
+  n = target->head;
+  target->head = n->next;
 
-	return n;
+  return n;
 }
 
 /*
@@ -316,12 +315,12 @@ ck_stack_pop_npsc(struct ck_stack *target)
 CK_CC_INLINE static struct ck_stack_entry *
 ck_stack_batch_pop_npsc(struct ck_stack *target)
 {
-	struct ck_stack_entry *n;
+  struct ck_stack_entry *n;
 
-	n = target->head;
-	target->head = NULL;
+  n = target->head;
+  target->head = NULL;
 
-	return n;
+  return n;
 }
 
 /*
@@ -330,26 +329,19 @@ ck_stack_batch_pop_npsc(struct ck_stack *target)
 CK_CC_INLINE static void
 ck_stack_init(struct ck_stack *stack)
 {
-
-	stack->head = NULL;
-	stack->generation = NULL;
-	return;
+  stack->head = NULL;
+  stack->generation = NULL;
+  return;
 }
 
 /* Defines a container_of functions for */
 #define CK_STACK_CONTAINER(T, M, N) CK_CC_CONTAINER(ck_stack_entry_t, T, M, N)
 
 #define CK_STACK_ISEMPTY(m) ((m)->head == NULL)
-#define CK_STACK_FIRST(s)   ((s)->head)
-#define CK_STACK_NEXT(m)    ((m)->next)
-#define CK_STACK_FOREACH(stack, entry)				\
-	for ((entry) = CK_STACK_FIRST(stack);			\
-	     (entry) != NULL;					\
-	     (entry) = CK_STACK_NEXT(entry))
-#define CK_STACK_FOREACH_SAFE(stack, entry, T)			\
-	for ((entry) = CK_STACK_FIRST(stack);			\
-	     (entry) != NULL && ((T) = (entry)->next, 1);	\
-	     (entry) = (T))
+#define CK_STACK_FIRST(s) ((s)->head)
+#define CK_STACK_NEXT(m) ((m)->next)
+#define CK_STACK_FOREACH(stack, entry) for ((entry) = CK_STACK_FIRST(stack); (entry) != NULL; (entry) = CK_STACK_NEXT(entry))
+#define CK_STACK_FOREACH_SAFE(stack, entry, T) \
+  for ((entry) = CK_STACK_FIRST(stack); (entry) != NULL && ((T) = (entry)->next, 1); (entry) = (T))
 
 #endif /* _CK_STACK_H */
-

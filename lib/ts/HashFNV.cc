@@ -21,11 +21,11 @@ ATSHash32FNV1a::ATSHash32FNV1a(void)
 void
 ATSHash32FNV1a::update(const void *data, size_t len)
 {
-  uint8_t *bp = (uint8_t *) data;
+  uint8_t *bp = (uint8_t *)data;
   uint8_t *be = bp + len;
 
   while (bp < be) {
-    hval ^= (uint32_t) *bp++;
+    hval ^= (uint32_t)*bp++;
     hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
   }
 }
@@ -56,11 +56,11 @@ ATSHash64FNV1a::ATSHash64FNV1a(void)
 void
 ATSHash64FNV1a::update(const void *data, size_t len)
 {
-  uint8_t *bp = (uint8_t *) data;
+  uint8_t *bp = (uint8_t *)data;
   uint8_t *be = bp + len;
 
   while (bp < be) {
-    hval ^= (uint64_t) *bp++;
+    hval ^= (uint64_t)*bp++;
     hval += (hval << 1) + (hval << 4) + (hval << 5) + (hval << 7) + (hval << 8) + (hval << 40);
   }
 }

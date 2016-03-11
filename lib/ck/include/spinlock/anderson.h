@@ -39,127 +39,121 @@
  * This is an implementation of Anderson's array-based queuing lock.
  */
 struct ck_spinlock_anderson_thread {
-	unsigned int locked;
-	unsigned int position;
+  unsigned int locked;
+  unsigned int position;
 };
 typedef struct ck_spinlock_anderson_thread ck_spinlock_anderson_thread_t;
 
 struct ck_spinlock_anderson {
-	struct ck_spinlock_anderson_thread *slots;
-	unsigned int count;
-	unsigned int wrap;
-	unsigned int mask;
-	char pad[CK_MD_CACHELINE - sizeof(unsigned int) * 3 - sizeof(void *)];
-	unsigned int next;
+  struct ck_spinlock_anderson_thread *slots;
+  unsigned int count;
+  unsigned int wrap;
+  unsigned int mask;
+  char pad[CK_MD_CACHELINE - sizeof(unsigned int) * 3 - sizeof(void *)];
+  unsigned int next;
 };
 typedef struct ck_spinlock_anderson ck_spinlock_anderson_t;
 
 CK_CC_INLINE static void
-ck_spinlock_anderson_init(struct ck_spinlock_anderson *lock,
-    struct ck_spinlock_anderson_thread *slots,
-    unsigned int count)
+ck_spinlock_anderson_init(struct ck_spinlock_anderson *lock, struct ck_spinlock_anderson_thread *slots, unsigned int count)
 {
-	unsigned int i;
+  unsigned int i;
 
-	slots[0].locked = false;
-	slots[0].position = 0;
-	for (i = 1; i < count; i++) {
-		slots[i].locked = true;
-		slots[i].position = i;
-	}
+  slots[0].locked = false;
+  slots[0].position = 0;
+  for (i = 1; i < count; i++) {
+    slots[i].locked = true;
+    slots[i].position = i;
+  }
 
-	lock->slots = slots;
-	lock->count = count;
-	lock->mask = count - 1;
-	lock->next = 0;
+  lock->slots = slots;
+  lock->count = count;
+  lock->mask = count - 1;
+  lock->next = 0;
 
-	/*
-	 * If the number of threads is not a power of two then compute
-	 * appropriate wrap-around value in the case of next slot counter
-	 * overflow.
-	 */
-	if (count & (count - 1))
-		lock->wrap = (UINT_MAX % count) + 1;
-	else
-		lock->wrap = 0;
+  /*
+   * If the number of threads is not a power of two then compute
+   * appropriate wrap-around value in the case of next slot counter
+   * overflow.
+   */
+  if (count & (count - 1))
+    lock->wrap = (UINT_MAX % count) + 1;
+  else
+    lock->wrap = 0;
 
-	ck_pr_barrier();
-	return;
+  ck_pr_barrier();
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_anderson_locked(struct ck_spinlock_anderson *lock)
 {
-	unsigned int position;
+  unsigned int position;
 
-	ck_pr_fence_load();
-	position = ck_pr_load_uint(&lock->next) & lock->mask;
-	ck_pr_fence_load();
+  ck_pr_fence_load();
+  position = ck_pr_load_uint(&lock->next) & lock->mask;
+  ck_pr_fence_load();
 
-	return ck_pr_load_uint(&lock->slots[position].locked);
+  return ck_pr_load_uint(&lock->slots[position].locked);
 }
 
 CK_CC_INLINE static void
-ck_spinlock_anderson_lock(struct ck_spinlock_anderson *lock,
-    struct ck_spinlock_anderson_thread **slot)
+ck_spinlock_anderson_lock(struct ck_spinlock_anderson *lock, struct ck_spinlock_anderson_thread **slot)
 {
-	unsigned int position, next;
-	unsigned int count = lock->count;
+  unsigned int position, next;
+  unsigned int count = lock->count;
 
-	/*
-	 * If count is not a power of 2, then it is possible for an overflow
-	 * to reallocate beginning slots to more than one thread. To avoid this
-	 * use a compare-and-swap.
-	 */
-	if (lock->wrap != 0) {
-		position = ck_pr_load_uint(&lock->next);
+  /*
+   * If count is not a power of 2, then it is possible for an overflow
+   * to reallocate beginning slots to more than one thread. To avoid this
+   * use a compare-and-swap.
+   */
+  if (lock->wrap != 0) {
+    position = ck_pr_load_uint(&lock->next);
 
-		do {
-			if (position == UINT_MAX)
-				next = lock->wrap;
-			else
-				next = position + 1;
-		} while (ck_pr_cas_uint_value(&lock->next, position,
-					      next, &position) == false);
+    do {
+      if (position == UINT_MAX)
+        next = lock->wrap;
+      else
+        next = position + 1;
+    } while (ck_pr_cas_uint_value(&lock->next, position, next, &position) == false);
 
-		position %= count;
-	} else {
-		position = ck_pr_faa_uint(&lock->next, 1);
-		position &= lock->mask;
-	}
+    position %= count;
+  } else {
+    position = ck_pr_faa_uint(&lock->next, 1);
+    position &= lock->mask;
+  }
 
-	/* Serialize with respect to previous thread's store. */
-	ck_pr_fence_load();
+  /* Serialize with respect to previous thread's store. */
+  ck_pr_fence_load();
 
-	/* Spin until slot is marked as unlocked. First slot is initialized to false. */
-	while (ck_pr_load_uint(&lock->slots[position].locked) == true)
-		ck_pr_stall();
+  /* Spin until slot is marked as unlocked. First slot is initialized to false. */
+  while (ck_pr_load_uint(&lock->slots[position].locked) == true)
+    ck_pr_stall();
 
-	/* Prepare slot for potential re-use by another thread. */
-	ck_pr_store_uint(&lock->slots[position].locked, true);
-	ck_pr_fence_acquire();
+  /* Prepare slot for potential re-use by another thread. */
+  ck_pr_store_uint(&lock->slots[position].locked, true);
+  ck_pr_fence_acquire();
 
-	*slot = lock->slots + position;
-	return;
+  *slot = lock->slots + position;
+  return;
 }
 
 CK_CC_INLINE static void
-ck_spinlock_anderson_unlock(struct ck_spinlock_anderson *lock,
-    struct ck_spinlock_anderson_thread *slot)
+ck_spinlock_anderson_unlock(struct ck_spinlock_anderson *lock, struct ck_spinlock_anderson_thread *slot)
 {
-	unsigned int position;
+  unsigned int position;
 
-	ck_pr_fence_release();
+  ck_pr_fence_release();
 
-	/* Mark next slot as available. */
-	if (lock->wrap == 0)
-		position = (slot->position + 1) & lock->mask;
-	else
-		position = (slot->position + 1) % lock->count;
+  /* Mark next slot as available. */
+  if (lock->wrap == 0)
+    position = (slot->position + 1) & lock->mask;
+  else
+    position = (slot->position + 1) % lock->count;
 
-	ck_pr_store_uint(&lock->slots[position].locked, false);
-	return;
+  ck_pr_store_uint(&lock->slots[position].locked, false);
+  return;
 }
 #endif /* CK_F_SPINLOCK_ANDERSON */
 #endif /* _CK_SPINLOCK_ANDERSON_H */
-

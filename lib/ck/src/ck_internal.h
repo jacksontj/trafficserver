@@ -38,64 +38,60 @@
 CK_CC_INLINE static uint32_t
 ck_internal_log(uint32_t v)
 {
-        uint32_t r = (v & CK_INTERNAL_LOG_0) != 0;
+  uint32_t r = (v & CK_INTERNAL_LOG_0) != 0;
 
-	r |= ((v & CK_INTERNAL_LOG_4) != 0) << 4;
-	r |= ((v & CK_INTERNAL_LOG_3) != 0) << 3;
-	r |= ((v & CK_INTERNAL_LOG_2) != 0) << 2;
-	r |= ((v & CK_INTERNAL_LOG_1) != 0) << 1;
-        return (r);
+  r |= ((v & CK_INTERNAL_LOG_4) != 0) << 4;
+  r |= ((v & CK_INTERNAL_LOG_3) != 0) << 3;
+  r |= ((v & CK_INTERNAL_LOG_2) != 0) << 2;
+  r |= ((v & CK_INTERNAL_LOG_1) != 0) << 1;
+  return (r);
 }
 
 CK_CC_INLINE static uint32_t
 ck_internal_power_2(uint32_t v)
 {
-
-        --v;
-        v |= v >> 1;
-        v |= v >> 2;
-        v |= v >> 4;
-        v |= v >> 8;
-        v |= v >> 16;
-        return (++v);
+  --v;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  return (++v);
 }
 
 CK_CC_INLINE static unsigned long
 ck_internal_max(unsigned long x, unsigned long y)
 {
-
-	return x ^ ((x ^ y) & -(x < y));
+  return x ^ ((x ^ y) & -(x < y));
 }
 
 CK_CC_INLINE static uint64_t
 ck_internal_max_64(uint64_t x, uint64_t y)
 {
-
-	return x ^ ((x ^ y) & -(x < y));
+  return x ^ ((x ^ y) & -(x < y));
 }
 
 CK_CC_INLINE static uint32_t
 ck_internal_max_32(uint32_t x, uint32_t y)
 {
-
-	return x ^ ((x ^ y) & -(x < y));
+  return x ^ ((x ^ y) & -(x < y));
 }
 
 CK_CC_INLINE static unsigned long
 ck_internal_bsf(unsigned long v)
 {
 #if defined(__GNUC__)
-	return __builtin_ffs(v);
+  return __builtin_ffs(v);
 #else
-	unsigned int i;
-	const unsigned int s = sizeof(unsigned long) * 8 - 1;
+  unsigned int i;
+  const unsigned int s = sizeof(unsigned long) * 8 - 1;
 
-	for (i = 0; i < s; i++) {
-		if (v & (1UL << (s - i)))
-			return sizeof(unsigned long) * 8 - i;
-	}
+  for (i = 0; i < s; i++) {
+    if (v & (1UL << (s - i)))
+      return sizeof(unsigned long) * 8 - i;
+  }
 
-	return 1;
+  return 1;
 #endif /* !__GNUC__ */
 }
 
@@ -103,17 +99,16 @@ CK_CC_INLINE static uint64_t
 ck_internal_bsf_64(uint64_t v)
 {
 #if defined(__GNUC__)
-	return __builtin_ffs(v);
+  return __builtin_ffs(v);
 #else
-	unsigned int i;
-	const unsigned int s = sizeof(unsigned long) * 8 - 1;
+  unsigned int i;
+  const unsigned int s = sizeof(unsigned long) * 8 - 1;
 
-	for (i = 0; i < s; i++) {
-		if (v & (1ULL << (63U - i)))
-			return i;
-	}
+  for (i = 0; i < s; i++) {
+    if (v & (1ULL << (63U - i)))
+      return i;
+  }
 #endif /* !__GNUC__ */
 
-	return 1;
+  return 1;
 }
-

@@ -32,10 +32,10 @@
 #include "P_RecCore.h"
 #include "I_Layout.h"
 
-const char     *g_rec_config_fpath = NULL;
-LLQ            *g_rec_config_contents_llq = NULL;
-InkHashTable   *g_rec_config_contents_ht = NULL;
-ink_mutex       g_rec_config_lock;
+const char *g_rec_config_fpath = NULL;
+LLQ *g_rec_config_contents_llq = NULL;
+InkHashTable *g_rec_config_contents_ht = NULL;
+ink_mutex g_rec_config_lock;
 
 //-------------------------------------------------------------------------
 // RecConfigFileInit
@@ -43,9 +43,9 @@ ink_mutex       g_rec_config_lock;
 void
 RecConfigFileInit(void)
 {
-    ink_mutex_init(&g_rec_config_lock, NULL);
-    g_rec_config_contents_llq = create_queue();
-    g_rec_config_contents_ht = ink_hash_table_create(InkHashTableKeyType_String);
+  ink_mutex_init(&g_rec_config_lock, NULL);
+  g_rec_config_contents_llq = create_queue();
+  g_rec_config_contents_ht = ink_hash_table_create(InkHashTableKeyType_String);
 }
 
 //-------------------------------------------------------------------------
@@ -83,16 +83,20 @@ RecFileImport_Xmalloc(const char *file, char **file_buf, int *file_size)
 // RecConfigOverrideFromEnvironment
 //-------------------------------------------------------------------------
 const char *
-RecConfigOverrideFromEnvironment(const char * name, const char * value)
+RecConfigOverrideFromEnvironment(const char *name, const char *value)
 {
   ats_scoped_str envname(ats_strdup(name));
-  const char * envval = NULL;
+  const char *envval = NULL;
 
   // Munge foo.bar.config into FOO_BAR_CONFIG.
-  for (char * c = envname; *c != '\0'; ++c) {
+  for (char *c = envname; *c != '\0'; ++c) {
     switch (*c) {
-      case '.': *c = '_'; break;
-      default: *c = ParseRules::ink_toupper(*c); break;
+    case '.':
+      *c = '_';
+      break;
+    default:
+      *c = ParseRules::ink_toupper(*c);
+      break;
     }
   }
 
@@ -108,7 +112,7 @@ RecConfigOverrideFromEnvironment(const char * name, const char * value)
 // RecParseConfigFile
 //-------------------------------------------------------------------------
 int
-RecConfigFileParse(const char * path, RecConfigEntryCallback handler, bool inc_version)
+RecConfigFileParse(const char *path, RecConfigEntryCallback handler, bool inc_version)
 {
   char *fbuf;
   int fsize;
@@ -137,7 +141,7 @@ RecConfigFileParse(const char * path, RecConfigEntryCallback handler, bool inc_v
   }
   // clear our g_rec_config_contents_xxx structures
   while (!queue_is_empty(g_rec_config_contents_llq)) {
-    cfe = (RecConfigFileEntry *) dequeue(g_rec_config_contents_llq);
+    cfe = (RecConfigFileEntry *)dequeue(g_rec_config_contents_llq);
     ats_free(cfe->entry);
     ats_free(cfe);
   }
@@ -233,7 +237,7 @@ RecConfigFileParse(const char * path, RecConfigEntryCallback handler, bool inc_v
     cfe = (RecConfigFileEntry *)ats_malloc(sizeof(RecConfigFileEntry));
     cfe->entry_type = RECE_RECORD;
     cfe->entry = ats_strdup(name_str);
-    enqueue(g_rec_config_contents_llq, (void *) cfe);
+    enqueue(g_rec_config_contents_llq, (void *)cfe);
     ink_hash_table_insert(g_rec_config_contents_ht, name_str, NULL);
     goto L_done;
 
@@ -243,7 +247,7 @@ RecConfigFileParse(const char * path, RecConfigEntryCallback handler, bool inc_v
     cfe = (RecConfigFileEntry *)ats_malloc(sizeof(RecConfigFileEntry));
     cfe->entry_type = RECE_COMMENT;
     cfe->entry = ats_strdup(line);
-    enqueue(g_rec_config_contents_llq, (void *) cfe);
+    enqueue(g_rec_config_contents_llq, (void *)cfe);
 
   L_done:
     line = line_tok.iterNext(&line_tok_state);

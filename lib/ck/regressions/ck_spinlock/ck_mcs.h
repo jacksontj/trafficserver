@@ -4,4 +4,3 @@
 #define LOCK ck_spinlock_mcs_lock(&lock, &node)
 #define UNLOCK ck_spinlock_mcs_unlock(&lock, &node)
 #define LOCKED ck_spinlock_mcs_locked(&lock)
-

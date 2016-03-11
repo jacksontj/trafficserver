@@ -35,21 +35,21 @@
 #include <stddef.h>
 
 struct _ck_array {
-	unsigned int n_committed;
-	unsigned int length;
-	void *values[];
+  unsigned int n_committed;
+  unsigned int length;
+  void *values[];
 };
 
 struct ck_array {
-	struct ck_malloc *allocator;
-	struct _ck_array *active;
-	unsigned int n_entries;
-	struct _ck_array *transaction;
+  struct ck_malloc *allocator;
+  struct _ck_array *active;
+  unsigned int n_entries;
+  struct _ck_array *transaction;
 };
 typedef struct ck_array ck_array_t;
 
 struct ck_array_iterator {
-	struct _ck_array *snapshot;
+  struct _ck_array *snapshot;
 };
 typedef struct ck_array_iterator ck_array_iterator_t;
 
@@ -66,36 +66,31 @@ void ck_array_deinit(ck_array_t *, bool);
 CK_CC_INLINE static unsigned int
 ck_array_length(struct ck_array *array)
 {
-	struct _ck_array *a = ck_pr_load_ptr(&array->active);
+  struct _ck_array *a = ck_pr_load_ptr(&array->active);
 
-	ck_pr_fence_load();
-	return ck_pr_load_uint(&a->n_committed);
+  ck_pr_fence_load();
+  return ck_pr_load_uint(&a->n_committed);
 }
 
 CK_CC_INLINE static void *
 ck_array_buffer(struct ck_array *array, unsigned int *length)
 {
-	struct _ck_array *a = ck_pr_load_ptr(&array->active);
+  struct _ck_array *a = ck_pr_load_ptr(&array->active);
 
-	ck_pr_fence_load();
-	*length = ck_pr_load_uint(&a->n_committed);
-	return a->values;
+  ck_pr_fence_load();
+  *length = ck_pr_load_uint(&a->n_committed);
+  return a->values;
 }
 
 CK_CC_INLINE static bool
 ck_array_initialized(struct ck_array *array)
 {
-
-	return ck_pr_load_ptr(&array->active) != NULL;
+  return ck_pr_load_ptr(&array->active) != NULL;
 }
 
-#define CK_ARRAY_FOREACH(a, i, b)		   	\
-	(i)->snapshot = ck_pr_load_ptr(&(a)->active);	\
-	ck_pr_fence_load();				\
-	for (unsigned int _ck_i = 0;		   	\
-	    _ck_i < (a)->active->n_committed &&		\
-	    ((*b) = (a)->active->values[_ck_i], 1);	\
-	    _ck_i++)
+#define CK_ARRAY_FOREACH(a, i, b)               \
+  (i)->snapshot = ck_pr_load_ptr(&(a)->active); \
+  ck_pr_fence_load();                           \
+  for (unsigned int _ck_i = 0; _ck_i < (a)->active->n_committed && ((*b) = (a)->active->values[_ck_i], 1); _ck_i++)
 
 #endif /* _CK_ARRAY_H */
-

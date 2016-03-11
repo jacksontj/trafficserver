@@ -43,27 +43,30 @@
 #include <ck_limits.h>
 
 struct ck_bytelock {
-	unsigned int owner;
-	unsigned int n_readers;
-	uint8_t readers[CK_MD_CACHELINE - sizeof(unsigned int) * 2] CK_CC_ALIGN(8);
+  unsigned int owner;
+  unsigned int n_readers;
+  uint8_t readers[CK_MD_CACHELINE - sizeof(unsigned int) * 2] CK_CC_ALIGN(8);
 };
 typedef struct ck_bytelock ck_bytelock_t;
 
-#define CK_BYTELOCK_INITIALIZER { 0, 0, {0} }
-#define CK_BYTELOCK_UNSLOTTED   UINT_MAX
+#define CK_BYTELOCK_INITIALIZER \
+  {                             \
+    0, 0, { 0 }                 \
+  }
+#define CK_BYTELOCK_UNSLOTTED UINT_MAX
 
 CK_CC_INLINE static void
 ck_bytelock_init(struct ck_bytelock *bytelock)
 {
-	unsigned int i;
+  unsigned int i;
 
-	bytelock->owner = 0;
-	bytelock->n_readers = 0;
-	for (i = 0; i < sizeof bytelock->readers; i++)
-		bytelock->readers[i] = false;
+  bytelock->owner = 0;
+  bytelock->n_readers = 0;
+  for (i = 0; i < sizeof bytelock->readers; i++)
+    bytelock->readers[i] = false;
 
-	ck_pr_barrier();
-	return;
+  ck_pr_barrier();
+  return;
 }
 
 #ifdef CK_F_PR_LOAD_64
@@ -81,29 +84,29 @@ ck_bytelock_init(struct ck_bytelock *bytelock)
 CK_CC_INLINE static void
 ck_bytelock_write_lock(struct ck_bytelock *bytelock, unsigned int slot)
 {
-	CK_BYTELOCK_TYPE *readers = (void *)bytelock->readers;
-	unsigned int i;
+  CK_BYTELOCK_TYPE *readers = (void *)bytelock->readers;
+  unsigned int i;
 
-	/* Announce upcoming writer acquisition. */
-	while (ck_pr_cas_uint(&bytelock->owner, 0, slot) == false)
-		ck_pr_stall();
+  /* Announce upcoming writer acquisition. */
+  while (ck_pr_cas_uint(&bytelock->owner, 0, slot) == false)
+    ck_pr_stall();
 
-	/* If we are slotted, we might be upgrading from a read lock. */
-	if (slot <= sizeof bytelock->readers)
-		ck_pr_store_8(&bytelock->readers[slot - 1], false);
+  /* If we are slotted, we might be upgrading from a read lock. */
+  if (slot <= sizeof bytelock->readers)
+    ck_pr_store_8(&bytelock->readers[slot - 1], false);
 
-	/* Wait for slotted readers to drain out. */
-	ck_pr_fence_store_load();
-	for (i = 0; i < sizeof(bytelock->readers) / CK_BYTELOCK_LENGTH; i++) {
-		while (CK_BYTELOCK_LOAD(&readers[i]) != false)
-			ck_pr_stall();
-	}
+  /* Wait for slotted readers to drain out. */
+  ck_pr_fence_store_load();
+  for (i = 0; i < sizeof(bytelock->readers) / CK_BYTELOCK_LENGTH; i++) {
+    while (CK_BYTELOCK_LOAD(&readers[i]) != false)
+      ck_pr_stall();
+  }
 
-	/* Wait for unslotted readers to drain out. */
-	while (ck_pr_load_uint(&bytelock->n_readers) != 0)
-		ck_pr_stall();
+  /* Wait for unslotted readers to drain out. */
+  while (ck_pr_load_uint(&bytelock->n_readers) != 0)
+    ck_pr_stall();
 
-	return;
+  return;
 }
 
 #undef CK_BYTELOCK_LENGTH
@@ -113,75 +116,71 @@ ck_bytelock_write_lock(struct ck_bytelock *bytelock, unsigned int slot)
 CK_CC_INLINE static void
 ck_bytelock_write_unlock(struct ck_bytelock *bytelock)
 {
-
-	ck_pr_fence_release();
-	ck_pr_store_uint(&bytelock->owner, 0);
-	return;
+  ck_pr_fence_release();
+  ck_pr_store_uint(&bytelock->owner, 0);
+  return;
 }
 
 CK_CC_INLINE static void
 ck_bytelock_read_lock(struct ck_bytelock *bytelock, unsigned int slot)
 {
+  if (ck_pr_load_uint(&bytelock->owner) == slot) {
+    ck_pr_store_8(&bytelock->readers[slot - 1], true);
+    ck_pr_fence_strict_store();
+    ck_pr_store_uint(&bytelock->owner, 0);
+    return;
+  }
 
-	if (ck_pr_load_uint(&bytelock->owner) == slot) {
-		ck_pr_store_8(&bytelock->readers[slot - 1], true);
-		ck_pr_fence_strict_store();
-		ck_pr_store_uint(&bytelock->owner, 0);
-		return;
-	}
+  /* Unslotted threads will have to use the readers counter. */
+  if (slot > sizeof bytelock->readers) {
+    for (;;) {
+      ck_pr_inc_uint(&bytelock->n_readers);
+      ck_pr_fence_atomic_load();
+      if (ck_pr_load_uint(&bytelock->owner) == 0)
+        break;
+      ck_pr_dec_uint(&bytelock->n_readers);
 
-	/* Unslotted threads will have to use the readers counter. */
-	if (slot > sizeof bytelock->readers) {
-		for (;;) {
-			ck_pr_inc_uint(&bytelock->n_readers);
-			ck_pr_fence_atomic_load();
-			if (ck_pr_load_uint(&bytelock->owner) == 0)
-				break;
-			ck_pr_dec_uint(&bytelock->n_readers);
+      while (ck_pr_load_uint(&bytelock->owner) != 0)
+        ck_pr_stall();
+    }
 
-			while (ck_pr_load_uint(&bytelock->owner) != 0)
-				ck_pr_stall();
-		}
+    ck_pr_fence_load();
+    return;
+  }
 
-		ck_pr_fence_load();
-		return;
-	}
+  slot -= 1;
+  for (;;) {
+    ck_pr_store_8(&bytelock->readers[slot], true);
+    ck_pr_fence_store_load();
 
-	slot -= 1;
-	for (;;) {
-		ck_pr_store_8(&bytelock->readers[slot], true);
-		ck_pr_fence_store_load();
+    /*
+     * If there is no owner at this point, our slot has
+     * already been published and it is guaranteed no
+     * write acquisition will succeed until we drain out.
+     */
+    if (ck_pr_load_uint(&bytelock->owner) == 0)
+      break;
 
-		/*
-		 * If there is no owner at this point, our slot has
-		 * already been published and it is guaranteed no
-		 * write acquisition will succeed until we drain out.
-		 */
-		if (ck_pr_load_uint(&bytelock->owner) == 0)
-			break;
+    ck_pr_store_8(&bytelock->readers[slot], false);
+    while (ck_pr_load_uint(&bytelock->owner) != 0)
+      ck_pr_stall();
+  }
 
-		ck_pr_store_8(&bytelock->readers[slot], false);
-		while (ck_pr_load_uint(&bytelock->owner) != 0)
-			ck_pr_stall();
-	}
-
-	ck_pr_fence_load();
-	return;
+  ck_pr_fence_load();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_bytelock_read_unlock(struct ck_bytelock *bytelock, unsigned int slot)
 {
+  ck_pr_fence_release();
 
-	ck_pr_fence_release();
+  if (slot > sizeof bytelock->readers)
+    ck_pr_dec_uint(&bytelock->n_readers);
+  else
+    ck_pr_store_8(&bytelock->readers[slot - 1], false);
 
-	if (slot > sizeof bytelock->readers)
-		ck_pr_dec_uint(&bytelock->n_readers);
-	else
-		ck_pr_store_8(&bytelock->readers[slot - 1], false);
-
-	return;
+  return;
 }
 
 #endif /* _CK_BYTELOCK_H */
-

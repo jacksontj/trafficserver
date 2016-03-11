@@ -50,7 +50,6 @@ enum TsReturnCode { TS_ERROR = -1, TS_SUCCESS = 0 };
  * @param errbuf_size Not used
  */
 TsReturnCode TSRemapNewInstance(int argc, char *argv[], void **instance_handle, char *errbuf, int errbuf_size);
-
 }
 
 

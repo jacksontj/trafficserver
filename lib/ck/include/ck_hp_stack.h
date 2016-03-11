@@ -34,81 +34,78 @@
 #include <stddef.h>
 
 #define CK_HP_STACK_SLOTS_COUNT 1
-#define CK_HP_STACK_SLOTS_SIZE  sizeof(void *)
+#define CK_HP_STACK_SLOTS_SIZE sizeof(void *)
 
 CK_CC_INLINE static void
 ck_hp_stack_push_mpmc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
-
-	ck_stack_push_upmc(target, entry);
-	return;
+  ck_stack_push_upmc(target, entry);
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_hp_stack_trypush_mpmc(struct ck_stack *target, struct ck_stack_entry *entry)
 {
-
-	return ck_stack_trypush_upmc(target, entry);
+  return ck_stack_trypush_upmc(target, entry);
 }
 
 CK_CC_INLINE static struct ck_stack_entry *
 ck_hp_stack_pop_mpmc(ck_hp_record_t *record, struct ck_stack *target)
 {
-	struct ck_stack_entry *entry, *update;
+  struct ck_stack_entry *entry, *update;
 
-	do {
-		entry = ck_pr_load_ptr(&target->head);
-		if (entry == NULL)
-			return NULL;
+  do {
+    entry = ck_pr_load_ptr(&target->head);
+    if (entry == NULL)
+      return NULL;
 
-		ck_hp_set(record, 0, entry);
-		ck_pr_fence_store_load();
-	} while (entry != ck_pr_load_ptr(&target->head));
+    ck_hp_set(record, 0, entry);
+    ck_pr_fence_store_load();
+  } while (entry != ck_pr_load_ptr(&target->head));
 
-	while (ck_pr_cas_ptr_value(&target->head, entry, entry->next, &entry) == false) {
-		if (entry == NULL)
-			return NULL;
+  while (ck_pr_cas_ptr_value(&target->head, entry, entry->next, &entry) == false) {
+    if (entry == NULL)
+      return NULL;
 
-		ck_hp_set(record, 0, entry);
-		ck_pr_fence_store_load();
-		update = ck_pr_load_ptr(&target->head);
-		while (entry != update) {
-			ck_hp_set(record, 0, update);
-			ck_pr_fence_store_load();
-			entry = update;
-			update = ck_pr_load_ptr(&target->head);
-			if (update == NULL)
-				return NULL;
-		}
-	}
+    ck_hp_set(record, 0, entry);
+    ck_pr_fence_store_load();
+    update = ck_pr_load_ptr(&target->head);
+    while (entry != update) {
+      ck_hp_set(record, 0, update);
+      ck_pr_fence_store_load();
+      entry = update;
+      update = ck_pr_load_ptr(&target->head);
+      if (update == NULL)
+        return NULL;
+    }
+  }
 
-	return entry;
+  return entry;
 }
 
 CK_CC_INLINE static bool
 ck_hp_stack_trypop_mpmc(ck_hp_record_t *record, struct ck_stack *target, struct ck_stack_entry **r)
 {
-	struct ck_stack_entry *entry;
+  struct ck_stack_entry *entry;
 
-	entry = ck_pr_load_ptr(&target->head);
-	if (entry == NULL)
-		return false;
+  entry = ck_pr_load_ptr(&target->head);
+  if (entry == NULL)
+    return false;
 
-	ck_hp_set(record, 0, entry);
-	ck_pr_fence_store_load();
-	if (entry != ck_pr_load_ptr(&target->head))
-		goto leave;
+  ck_hp_set(record, 0, entry);
+  ck_pr_fence_store_load();
+  if (entry != ck_pr_load_ptr(&target->head))
+    goto leave;
 
-	if (ck_pr_cas_ptr_value(&target->head, entry, entry->next, &entry) == false)
-		goto leave;
+  if (ck_pr_cas_ptr_value(&target->head, entry, entry->next, &entry) == false)
+    goto leave;
 
-	*r = entry;
-	return true;
+  *r = entry;
+  return true;
 
 leave:
-	ck_hp_set(record, 0, NULL);
-	return false;
+  ck_hp_set(record, 0, NULL);
+  return false;
 }
 
 #endif /* _CK_HP_STACK_H */
-

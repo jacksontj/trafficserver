@@ -41,53 +41,54 @@ struct SSLContextStorage;
     there is exactly one place we can find all the @c SSL_CTX instances exactly once.
 
 */
-struct SSLCertContext
-{
+struct SSLCertContext {
   /** Special things to do instead of use a context.
       In general an option will be associated with a @c NULL context because
       the context is not used.
   */
   enum Option {
-    OPT_NONE, ///< Nothing special. Implies valid context.
+    OPT_NONE,  ///< Nothing special. Implies valid context.
     OPT_TUNNEL ///< Just tunnel, don't terminate.
   };
 
   SSLCertContext() : ctx(0), opt(OPT_NONE) {}
-  explicit SSLCertContext(SSL_CTX* c) : ctx(c), opt(OPT_NONE) {}
-  SSLCertContext(SSL_CTX* c, Option o) : ctx(c), opt(o) {}
+  explicit SSLCertContext(SSL_CTX *c) : ctx(c), opt(OPT_NONE) {}
+  SSLCertContext(SSL_CTX *c, Option o) : ctx(c), opt(o) {}
 
-  SSL_CTX* ctx; ///< openSSL context.
-  Option opt; ///< Special handling option.
+  SSL_CTX *ctx; ///< openSSL context.
+  Option opt;   ///< Special handling option.
 };
 
-struct SSLCertLookup : public ConfigInfo
-{
-  SSLContextStorage * ssl_storage;
-  SSL_CTX *           ssl_default;
+struct SSLCertLookup : public ConfigInfo {
+  SSLContextStorage *ssl_storage;
+  SSL_CTX *ssl_default;
 
   int insert(const char *name, SSLCertContext const &cc);
-  int insert(const IpEndpoint& address, SSLCertContext const &cc);
+  int insert(const IpEndpoint &address, SSLCertContext const &cc);
 
   /** Find certificate context by IP address.
       The IP addresses are taken from the socket @a s.
       Exact matches have priority, then wildcards. The destination address is preferred to the source address.
       @return @c A pointer to the matched context, @c NULL if no match is found.
   */
-  SSLCertContext* find(const IpEndpoint& address) const;
+  SSLCertContext *find(const IpEndpoint &address) const;
 
   /** Find certificate context by name (FQDN).
       Exact matches have priority, then wildcards. Only destination based matches are checked.
       @return @c A pointer to the matched context, @c NULL if no match is found.
   */
-  SSLCertContext* find(char const* name) const;
-
+  SSLCertContext *find(char const *name) const;
 
 
   // Return the last-resort default TLS context if there is no name or address match.
-  SSL_CTX * defaultContext() const { return ssl_default; }
+  SSL_CTX *
+  defaultContext() const
+  {
+    return ssl_default;
+  }
 
   unsigned count() const;
-  SSLCertContext * get(unsigned i) const;
+  SSLCertContext *get(unsigned i) const;
 
   SSLCertLookup();
   virtual ~SSLCertLookup();

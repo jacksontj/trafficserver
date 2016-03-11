@@ -52,36 +52,33 @@ static unsigned int nthr;
 static void
 ck_spinlock_fas_lock_with_context(ck_spinlock_fas_t *lock, void *context)
 {
-
-	(void)context;
-	ck_spinlock_fas_lock(lock);
-	return;
+  (void)context;
+  ck_spinlock_fas_lock(lock);
+  return;
 }
 
 static void
 ck_spinlock_fas_unlock_with_context(ck_spinlock_fas_t *lock, void *context)
 {
-
-	(void)context;
-	ck_spinlock_fas_unlock(lock);
-	return;
+  (void)context;
+  ck_spinlock_fas_unlock(lock);
+  return;
 }
 
 static bool
 ck_spinlock_fas_locked_with_context(ck_spinlock_fas_t *lock, void *context)
 {
-
-	(void)context;
-	return ck_spinlock_fas_locked(lock);
+  (void)context;
+  return ck_spinlock_fas_locked(lock);
 }
 
-CK_COHORT_PROTOTYPE(fas_fas,
-    ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context, ck_spinlock_fas_locked_with_context,
-    ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context, ck_spinlock_fas_locked_with_context)
+CK_COHORT_PROTOTYPE(fas_fas, ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context,
+                    ck_spinlock_fas_locked_with_context, ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context,
+                    ck_spinlock_fas_locked_with_context)
 LOCK_PROTOTYPE(fas_fas)
 
 struct cohort_record {
-	CK_COHORT_INSTANCE(fas_fas) cohort;
+  CK_COHORT_INSTANCE(fas_fas) cohort;
 } CK_CC_CACHELINE;
 static struct cohort_record *cohorts;
 
@@ -90,156 +87,154 @@ static LOCK_INSTANCE(fas_fas) rw_cohort = LOCK_INITIALIZER;
 static unsigned int n_cohorts;
 
 struct block {
-	unsigned int tid;
+  unsigned int tid;
 };
 
 static void *
 thread_rwlock(void *pun)
 {
-	uint64_t s_b, e_b, a, i;
-	uint64_t *value = pun;
-	CK_COHORT_INSTANCE(fas_fas) *cohort;
-	unsigned int core;
+  uint64_t s_b, e_b, a, i;
+  uint64_t *value = pun;
+  CK_COHORT_INSTANCE(fas_fas) * cohort;
+  unsigned int core;
 
-	if (aff_iterate_core(&affinity, &core) != 0) {
-		perror("ERROR: Could not affine thread");
-		exit(EXIT_FAILURE);
-	}
+  if (aff_iterate_core(&affinity, &core) != 0) {
+    perror("ERROR: Could not affine thread");
+    exit(EXIT_FAILURE);
+  }
 
-	cohort = &((cohorts + (core / (int)(affinity.delta)) % n_cohorts)->cohort);
+  cohort = &((cohorts + (core / (int)(affinity.delta)) % n_cohorts)->cohort);
 
-	ck_pr_inc_uint(&barrier);
-	while (ck_pr_load_uint(&barrier) != nthr)
-		ck_pr_stall();
+  ck_pr_inc_uint(&barrier);
+  while (ck_pr_load_uint(&barrier) != nthr)
+    ck_pr_stall();
 
-	for (i = 1, a = 0;; i++) {
-		s_b = rdtsc();
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		e_b = rdtsc();
+  for (i = 1, a = 0;; i++) {
+    s_b = rdtsc();
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    e_b = rdtsc();
 
-		a += (e_b - s_b) >> 4;
+    a += (e_b - s_b) >> 4;
 
-		if (ck_pr_load_uint(&flag) == 1)
-			break;
-	}
+    if (ck_pr_load_uint(&flag) == 1)
+      break;
+  }
 
-	ck_pr_inc_uint(&barrier);
-	while (ck_pr_load_uint(&barrier) != nthr * 2)
-		ck_pr_stall();
+  ck_pr_inc_uint(&barrier);
+  while (ck_pr_load_uint(&barrier) != nthr * 2)
+    ck_pr_stall();
 
-	*value = (a / i);
-	return NULL;
+  *value = (a / i);
+  return NULL;
 }
 
 int
 main(int argc, char *argv[])
 {
-	unsigned int i;
-	pthread_t *threads;
-	uint64_t *latency;
-	struct block *context;
-	ck_spinlock_fas_t *local_lock;
+  unsigned int i;
+  pthread_t *threads;
+  uint64_t *latency;
+  struct block *context;
+  ck_spinlock_fas_t *local_lock;
 
-	if (argc != 4) {
-		ck_error("Usage: throughput <number of cohorts> <threads per cohort> <affinity delta>\n");
-	}
+  if (argc != 4) {
+    ck_error("Usage: throughput <number of cohorts> <threads per cohort> <affinity delta>\n");
+  }
 
-	n_cohorts = atoi(argv[1]);
-	if (n_cohorts <= 0) {
-		ck_error("ERROR: Number of cohorts must be greater than 0\n");
-	}
+  n_cohorts = atoi(argv[1]);
+  if (n_cohorts <= 0) {
+    ck_error("ERROR: Number of cohorts must be greater than 0\n");
+  }
 
-	nthr = n_cohorts * atoi(argv[2]);
-	if (nthr <= 0) {
-		ck_error("ERROR: Number of threads must be greater than 0\n");
-	}
+  nthr = n_cohorts * atoi(argv[2]);
+  if (nthr <= 0) {
+    ck_error("ERROR: Number of threads must be greater than 0\n");
+  }
 
-	threads = malloc(sizeof(pthread_t) * nthr);
-	if (threads == NULL) {
-		ck_error("ERROR: Could not allocate thread structures\n");
-	}
+  threads = malloc(sizeof(pthread_t) * nthr);
+  if (threads == NULL) {
+    ck_error("ERROR: Could not allocate thread structures\n");
+  }
 
-	cohorts = malloc(sizeof(struct cohort_record) * n_cohorts);
-	if (cohorts == NULL) {
-		ck_error("ERROR: Could not allocate cohort structures\n");
-	}
+  cohorts = malloc(sizeof(struct cohort_record) * n_cohorts);
+  if (cohorts == NULL) {
+    ck_error("ERROR: Could not allocate cohort structures\n");
+  }
 
-	context = malloc(sizeof(struct block) * nthr);
-	if (context == NULL) {
-		ck_error("ERROR: Could not allocate thread contexts\n");
-	}
+  context = malloc(sizeof(struct block) * nthr);
+  if (context == NULL) {
+    ck_error("ERROR: Could not allocate thread contexts\n");
+  }
 
-	affinity.delta = atoi(argv[3]);
-	affinity.request = 0;
+  affinity.delta = atoi(argv[3]);
+  affinity.request = 0;
 
-	latency = malloc(sizeof(*latency) * nthr);
-	if (latency == NULL) {
-		ck_error("ERROR: Could not create latency buffer\n");
-	}
-	memset(latency, 0, sizeof(*latency) * nthr);
+  latency = malloc(sizeof(*latency) * nthr);
+  if (latency == NULL) {
+    ck_error("ERROR: Could not create latency buffer\n");
+  }
+  memset(latency, 0, sizeof(*latency) * nthr);
 
-	fprintf(stderr, "Creating cohorts...");
-	for (i = 0 ; i < n_cohorts ; i++) {
-		local_lock = malloc(max(CK_MD_CACHELINE, sizeof(ck_spinlock_fas_t)));
-		if (local_lock == NULL) {
-			ck_error("ERROR: Could not allocate local lock\n");
-		}
-		CK_COHORT_INIT(fas_fas, &((cohorts + i)->cohort), &global_lock, local_lock,
-		    CK_COHORT_DEFAULT_LOCAL_PASS_LIMIT);
-		local_lock = NULL;
-	}
-	fprintf(stderr, "done\n");
+  fprintf(stderr, "Creating cohorts...");
+  for (i = 0; i < n_cohorts; i++) {
+    local_lock = malloc(max(CK_MD_CACHELINE, sizeof(ck_spinlock_fas_t)));
+    if (local_lock == NULL) {
+      ck_error("ERROR: Could not allocate local lock\n");
+    }
+    CK_COHORT_INIT(fas_fas, &((cohorts + i)->cohort), &global_lock, local_lock, CK_COHORT_DEFAULT_LOCAL_PASS_LIMIT);
+    local_lock = NULL;
+  }
+  fprintf(stderr, "done\n");
 
-	fprintf(stderr, "Creating threads (rwlock)...");
-	for (i = 0; i < nthr; i++) {
-		if (pthread_create(&threads[i], NULL, thread_rwlock, latency + i) != 0) {
-			ck_error("ERROR: Could not create thread %d\n", i);
-		}
-	}
-	fprintf(stderr, "done\n");
+  fprintf(stderr, "Creating threads (rwlock)...");
+  for (i = 0; i < nthr; i++) {
+    if (pthread_create(&threads[i], NULL, thread_rwlock, latency + i) != 0) {
+      ck_error("ERROR: Could not create thread %d\n", i);
+    }
+  }
+  fprintf(stderr, "done\n");
 
-	common_sleep(10);
-	ck_pr_store_uint(&flag, 1);
+  common_sleep(10);
+  ck_pr_store_uint(&flag, 1);
 
-	fprintf(stderr, "Waiting for threads to finish acquisition regression...");
-	for (i = 0; i < nthr; i++)
-		pthread_join(threads[i], NULL);
-	fprintf(stderr, "done\n\n");
+  fprintf(stderr, "Waiting for threads to finish acquisition regression...");
+  for (i = 0; i < nthr; i++)
+    pthread_join(threads[i], NULL);
+  fprintf(stderr, "done\n\n");
 
-	for (i = 1; i <= nthr; i++)
-		printf("%10u %20" PRIu64 "\n", i, latency[i - 1]);
+  for (i = 1; i <= nthr; i++)
+    printf("%10u %20" PRIu64 "\n", i, latency[i - 1]);
 
-	return (0);
+  return (0);
 }
-

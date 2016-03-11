@@ -23,4 +23,3 @@
 #define CK_F_PR_LOAD_UINT
 #define CK_F_PR_LOAD_INT
 #define CK_F_PR_LOAD_PTR
-

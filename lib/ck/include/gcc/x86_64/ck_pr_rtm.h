@@ -52,58 +52,55 @@
 #include <ck_cc.h>
 #include <stdbool.h>
 
-#define CK_PR_RTM_STARTED	(~0U)
-#define CK_PR_RTM_EXPLICIT	(1 << 0)
-#define CK_PR_RTM_RETRY		(1 << 1)
-#define CK_PR_RTM_CONFLICT	(1 << 2)
-#define CK_PR_RTM_CAPACITY	(1 << 3)
-#define CK_PR_RTM_DEBUG		(1 << 4)
-#define CK_PR_RTM_NESTED	(1 << 5)
-#define CK_PR_RTM_CODE(x)	(((x) >> 24) & 0xFF)
+#define CK_PR_RTM_STARTED (~0U)
+#define CK_PR_RTM_EXPLICIT (1 << 0)
+#define CK_PR_RTM_RETRY (1 << 1)
+#define CK_PR_RTM_CONFLICT (1 << 2)
+#define CK_PR_RTM_CAPACITY (1 << 3)
+#define CK_PR_RTM_DEBUG (1 << 4)
+#define CK_PR_RTM_NESTED (1 << 5)
+#define CK_PR_RTM_CODE(x) (((x) >> 24) & 0xFF)
 
 CK_CC_INLINE static unsigned int
 ck_pr_rtm_begin(void)
 {
-	unsigned int r = CK_PR_RTM_STARTED;
+  unsigned int r = CK_PR_RTM_STARTED;
 
-	__asm__ __volatile__(".byte 0xc7,0xf8;"
-			     ".long 0;"
-				: "+a" (r)
-				:
-				: "memory");
+  __asm__ __volatile__(".byte 0xc7,0xf8;"
+                       ".long 0;"
+                       : "+a"(r)
+                       :
+                       : "memory");
 
-	return r;
+  return r;
 }
 
 CK_CC_INLINE static void
 ck_pr_rtm_end(void)
 {
-
-	__asm__ __volatile__(".byte 0x0f,0x01,0xd5" ::: "memory");
-	return;
+  __asm__ __volatile__(".byte 0x0f,0x01,0xd5" ::: "memory");
+  return;
 }
 
 CK_CC_INLINE static void
 ck_pr_rtm_abort(const unsigned int status)
 {
-
-	__asm__ __volatile__(".byte 0xc6,0xf8,%P0" :: "i" (status) : "memory");
-	return;
+  __asm__ __volatile__(".byte 0xc6,0xf8,%P0" ::"i"(status) : "memory");
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_pr_rtm_test(void)
 {
-	bool r;
+  bool r;
 
-	__asm__ __volatile__(".byte 0x0f,0x01,0xd6;"
-			     "setnz %0"
-				: "=r" (r)
-				:
-				: "memory");
+  __asm__ __volatile__(".byte 0x0f,0x01,0xd6;"
+                       "setnz %0"
+                       : "=r"(r)
+                       :
+                       : "memory");
 
-	return r;
+  return r;
 }
 
 #endif /* _CK_PR_X86_64_RTM_H */
-

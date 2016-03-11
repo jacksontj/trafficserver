@@ -51,17 +51,12 @@
 CK_CC_INLINE static void
 ck_pr_stall(void)
 {
-
-	__asm__ __volatile__("membar #LoadLoad" ::: "memory");
-	return;
+  __asm__ __volatile__("membar #LoadLoad" ::: "memory");
+  return;
 }
 
-#define CK_PR_FENCE(T, I)				\
-	CK_CC_INLINE static void			\
-	ck_pr_fence_strict_##T(void)			\
-	{						\
-		__asm__ __volatile__(I ::: "memory");   \
-	}
+#define CK_PR_FENCE(T, I) \
+  CK_CC_INLINE static void ck_pr_fence_strict_##T(void) { __asm__ __volatile__(I::: "memory"); }
 
 /*
  * Atomic operations are treated as both load and store
@@ -82,17 +77,13 @@ CK_PR_FENCE(release, "membar #LoadStore | #StoreStore")
 
 #undef CK_PR_FENCE
 
-#define CK_PR_LOAD(S, M, T, C, I)				\
-	CK_CC_INLINE static T					\
-	ck_pr_load_##S(const M *target)				\
-	{							\
-		T r;						\
-		__asm__ __volatile__(I " [%1], %0"		\
-					: "=&r" (r)		\
-					: "r"   (target)	\
-					: "memory");		\
-		return (r);					\
-	}
+#define CK_PR_LOAD(S, M, T, C, I)                                            \
+  CK_CC_INLINE static T ck_pr_load_##S(const M *target)                      \
+  {                                                                          \
+    T r;                                                                     \
+    __asm__ __volatile__(I " [%1], %0" : "=&r"(r) : "r"(target) : "memory"); \
+    return (r);                                                              \
+  }
 
 CK_PR_LOAD(ptr, void, void *, uint64_t, "ldx")
 
@@ -107,17 +98,12 @@ CK_PR_LOAD_S(int, int, "ldsw")
 #undef CK_PR_LOAD_S
 #undef CK_PR_LOAD
 
-#define CK_PR_STORE(S, M, T, C, I)				\
-	CK_CC_INLINE static void				\
-	ck_pr_store_##S(M *target, T v)				\
-	{							\
-		__asm__ __volatile__(I " %0, [%1]"		\
-					:			\
-					: "r" (v),		\
-					  "r" (target)		\
-					: "memory");		\
-		return;						\
-	}
+#define CK_PR_STORE(S, M, T, C, I)                                          \
+  CK_CC_INLINE static void ck_pr_store_##S(M *target, T v)                  \
+  {                                                                         \
+    __asm__ __volatile__(I " %0, [%1]" : : "r"(v), "r"(target) : "memory"); \
+    return;                                                                 \
+  }
 
 CK_PR_STORE(ptr, void, const void *, uint64_t, "stx")
 
@@ -136,66 +122,44 @@ CK_PR_STORE_S(int, int, "stsw")
 CK_CC_INLINE static bool
 ck_pr_cas_64_value(uint64_t *target, uint64_t compare, uint64_t set, uint64_t *value)
 {
+  __asm__ __volatile__("casx [%1], %2, %0" : "+&r"(set) : "r"(target), "r"(compare) : "memory");
 
-	__asm__ __volatile__("casx [%1], %2, %0"
-				: "+&r" (set)
-				: "r"   (target),
-				  "r"   (compare)
-				: "memory");
-
-	*value = set;
-	return (compare == set);
+  *value = set;
+  return (compare == set);
 }
 
 CK_CC_INLINE static bool
 ck_pr_cas_64(uint64_t *target, uint64_t compare, uint64_t set)
 {
+  __asm__ __volatile__("casx [%1], %2, %0" : "+&r"(set) : "r"(target), "r"(compare) : "memory");
 
-	__asm__ __volatile__("casx [%1], %2, %0"
-				: "+&r" (set)
-				: "r" (target),
-				  "r" (compare)
-				: "memory");
-
-	return (compare == set);
+  return (compare == set);
 }
 
 CK_CC_INLINE static bool
 ck_pr_cas_ptr(void *target, void *compare, void *set)
 {
-
-	return ck_pr_cas_64(target, (uint64_t)compare, (uint64_t)set);
+  return ck_pr_cas_64(target, (uint64_t)compare, (uint64_t)set);
 }
 
 CK_CC_INLINE static bool
 ck_pr_cas_ptr_value(void *target, void *compare, void *set, void *previous)
 {
-
-	return ck_pr_cas_64_value(target, (uint64_t)compare, (uint64_t)set, previous);
+  return ck_pr_cas_64_value(target, (uint64_t)compare, (uint64_t)set, previous);
 }
 
-#define CK_PR_CAS(N, T)							\
-	CK_CC_INLINE static bool					\
-	ck_pr_cas_##N##_value(T *target, T compare, T set, T *value)	\
-	{								\
-		__asm__ __volatile__("cas [%1], %2, %0"			\
-					: "+&r" (set)			\
-					: "r"   (target),		\
-					  "r"   (compare)		\
-					: "memory");			\
-		*value = set;						\
-		return (compare == set);				\
-	} 								\
-	CK_CC_INLINE static bool					\
-	ck_pr_cas_##N(T *target, T compare, T set)			\
-	{								\
-		__asm__ __volatile__("cas [%1], %2, %0"			\
-					: "+&r" (set)			\
-					: "r" (target),			\
-					  "r" (compare)			\
-					: "memory");			\
-		return (compare == set);				\
-	}
+#define CK_PR_CAS(N, T)                                                                           \
+  CK_CC_INLINE static bool ck_pr_cas_##N##_value(T *target, T compare, T set, T *value)           \
+  {                                                                                               \
+    __asm__ __volatile__("cas [%1], %2, %0" : "+&r"(set) : "r"(target), "r"(compare) : "memory"); \
+    *value = set;                                                                                 \
+    return (compare == set);                                                                      \
+  }                                                                                               \
+  CK_CC_INLINE static bool ck_pr_cas_##N(T *target, T compare, T set)                             \
+  {                                                                                               \
+    __asm__ __volatile__("cas [%1], %2, %0" : "+&r"(set) : "r"(target), "r"(compare) : "memory"); \
+    return (compare == set);                                                                      \
+  }
 
 CK_PR_CAS(32, uint32_t)
 CK_PR_CAS(uint, unsigned int)
@@ -203,17 +167,12 @@ CK_PR_CAS(int, int)
 
 #undef CK_PR_CAS
 
-#define CK_PR_FAS(N, T)						\
-	CK_CC_INLINE static T 					\
-	ck_pr_fas_##N(T *target, T update)			\
-	{							\
-								\
-		__asm__ __volatile__("swap [%1], %0"		\
-					: "+&r" (update)	\
-					: "r"   (target)	\
-					: "memory");		\
-		return (update);				\
-	}
+#define CK_PR_FAS(N, T)                                                             \
+  CK_CC_INLINE static T ck_pr_fas_##N(T *target, T update)                          \
+  {                                                                                 \
+    __asm__ __volatile__("swap [%1], %0" : "+&r"(update) : "r"(target) : "memory"); \
+    return (update);                                                                \
+  }
 
 CK_PR_FAS(int, int)
 CK_PR_FAS(uint, unsigned int)
@@ -222,4 +181,3 @@ CK_PR_FAS(32, uint32_t)
 #undef CK_PR_FAS
 
 #endif /* _CK_PR_SPARCV9_H */
-

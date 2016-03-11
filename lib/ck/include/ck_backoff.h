@@ -43,16 +43,16 @@ typedef volatile unsigned int ck_backoff_t;
 CK_CC_INLINE static void
 ck_backoff_eb(volatile unsigned int *c)
 {
-	volatile unsigned int i;
-	unsigned int ceiling;
+  volatile unsigned int i;
+  unsigned int ceiling;
 
-	ceiling = *c;
+  ceiling = *c;
 
-	for (i = 0; i < ceiling; i++);
+  for (i = 0; i < ceiling; i++)
+    ;
 
-	*c = ceiling <<= ceiling < CK_BACKOFF_CEILING;
-	return;
+  *c = ceiling <<= ceiling < CK_BACKOFF_CEILING;
+  return;
 }
 
 #endif /* _CK_BACKOFF_H */
-

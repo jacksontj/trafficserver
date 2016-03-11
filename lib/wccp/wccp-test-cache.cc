@@ -20,73 +20,71 @@
     limitations under the License.
  */
 
-# include <stdio.h>
-# include <unistd.h>
-# include <stdarg.h>
-# include <memory.h>
-# include <strings.h>
-# include <iostream>
-# include <iomanip>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdarg.h>
+#include <memory.h>
+#include <strings.h>
+#include <iostream>
+#include <iomanip>
 
-# include <getopt.h>
+#include <getopt.h>
 
-# include "Wccp.h"
+#include "Wccp.h"
 
-# include <sys/socket.h>
-# include <netinet/in.h>
-# include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-# include <poll.h>
+#include <poll.h>
 
-# include <libconfig.h++>
+#include <libconfig.h++>
 
-static char const USAGE_TEXT[] =
-  "%s\n"
-  "--address IP address to bind.\n"
-  "--router Booststrap IP address for routers.\n"
-  "--service Path to service group definitions.\n"
-  "--help Print usage and exit.\n"
-  ;
+static char const USAGE_TEXT[] = "%s\n"
+                                 "--address IP address to bind.\n"
+                                 "--router Booststrap IP address for routers.\n"
+                                 "--service Path to service group definitions.\n"
+                                 "--help Print usage and exit.\n";
 
 static bool Ready = true;
 
-inline void Error(char const* fmt, ...) {
+inline void
+Error(char const *fmt, ...)
+{
   va_list args;
   va_start(args, fmt);
   vfprintf(stderr, fmt, args);
   Ready = false;
 }
 
-void Log(
-  std::ostream& out,
-  ats::Errata const& errata,
-  int indent = 0
-) {
-  for ( ats::Errata::const_iterator spot = errata.begin(), limit = errata.end();
-        spot != limit;
-        ++spot
-  ) {
+void
+Log(std::ostream &out, ats::Errata const &errata, int indent = 0)
+{
+  for (ats::Errata::const_iterator spot = errata.begin(), limit = errata.end(); spot != limit; ++spot) {
     if (spot->m_id) {
-      if (indent) out << std::setw(indent) << std::setfill(' ') << "> ";
-      out << spot->m_id << " [" << spot->m_code << "]: " << spot->m_text
-          << std::endl
-        ;
+      if (indent)
+        out << std::setw(indent) << std::setfill(' ') << "> ";
+      out << spot->m_id << " [" << spot->m_code << "]: " << spot->m_text << std::endl;
     }
-    if (spot->getErrata().size()) Log(out, spot->getErrata(), indent+2);
+    if (spot->getErrata().size())
+      Log(out, spot->getErrata(), indent + 2);
   }
 }
 
-void LogToStdErr(ats::Errata const& errata) {
+void
+LogToStdErr(ats::Errata const &errata)
+{
   Log(std::cerr, errata);
 }
 
 int
-main(int argc, char** argv) {
+main(int argc, char **argv)
+{
   Wccp::Cache wcp;
 
   // Reading stdin support.
   size_t in_size = 200;
-  char* in_buff = 0;
+  char *in_buff = 0;
   ssize_t in_count;
 
   // Set up erratum support.
@@ -95,25 +93,25 @@ main(int argc, char** argv) {
   // getopt return values. Selected to avoid collisions with
   // short arguments.
   static int const OPT_ADDRESS = 257; ///< Bind to IP address option.
-  static int const OPT_HELP = 258; ///< Print help message.
-  static int const OPT_ROUTER = 259; ///< Seeded router IP address.
+  static int const OPT_HELP = 258;    ///< Print help message.
+  static int const OPT_ROUTER = 259;  ///< Seeded router IP address.
   static int const OPT_SERVICE = 260; ///< Service group definition.
 
   static option OPTIONS[] = {
-    { "address", 1, 0, OPT_ADDRESS },
-    { "router", 1, 0, OPT_ROUTER },
-    { "service", 1, 0, OPT_SERVICE },
-    { "help", 0, 0, OPT_HELP },
-    { 0, 0, 0, 0 } // required terminator.
+    {"address", 1, 0, OPT_ADDRESS},
+    {"router", 1, 0, OPT_ROUTER},
+    {"service", 1, 0, OPT_SERVICE},
+    {"help", 0, 0, OPT_HELP},
+    {0, 0, 0, 0} // required terminator.
   };
 
-  in_addr ip_addr = { INADDR_ANY };
-  in_addr router_addr = { INADDR_ANY };
+  in_addr ip_addr = {INADDR_ANY};
+  in_addr router_addr = {INADDR_ANY};
 
   int zret; // getopt return.
   int zidx; // option index.
   bool fail = false;
-  char const* FAIL_MSG = "";
+  char const *FAIL_MSG = "";
 
   while (-1 != (zret = getopt_long_only(argc, argv, "", OPTIONS, &zidx))) {
     switch (zret) {
@@ -139,7 +137,8 @@ main(int argc, char** argv) {
       break;
     case OPT_SERVICE:
       ats::Errata status = wcp.loadServicesFromFile(optarg);
-      if (!status) fail = true;
+      if (!status)
+        fail = true;
       break;
     }
   }

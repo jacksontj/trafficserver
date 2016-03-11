@@ -40,15 +40,14 @@
 
 //#include "LocalManager.h"
 
-#define SESSION_EXPIRES 600     // 10 minutes
-#define CURRENT_SESSION_EXPIRES 100     // 10 minutes
+#define SESSION_EXPIRES 600         // 10 minutes
+#define CURRENT_SESSION_EXPIRES 100 // 10 minutes
 #define SESSION_KEY_LEN 8
 
 static InkHashTable *g_session_ht = 0;
 static ink_mutex g_session_mutex;
 
-struct session_ele
-{
+struct session_ele {
   time_t created;
   void *data;
   WebHttpSessionDeleter deleter_func;
@@ -74,10 +73,10 @@ deleter_main(void *)
     // critical that we don't delete these objects right now.
     session_count = 0;
     if (ink_mutex_try_acquire(&g_session_mutex)) {
-      for (hte = ink_hash_table_iterator_first(g_session_ht, &htis);
-           hte != NULL; hte = ink_hash_table_iterator_next(g_session_ht, &htis)) {
-        key = (char *) ink_hash_table_entry_key(g_session_ht, hte);
-        session = (session_ele *) ink_hash_table_entry_value(g_session_ht, hte);
+      for (hte = ink_hash_table_iterator_first(g_session_ht, &htis); hte != NULL;
+           hte = ink_hash_table_iterator_next(g_session_ht, &htis)) {
+        key = (char *)ink_hash_table_entry_key(g_session_ht, hte);
+        session = (session_ele *)ink_hash_table_entry_value(g_session_ht, hte);
         if (now - session->created > SESSION_EXPIRES) {
           ink_hash_table_delete(g_session_ht, key);
           session->deleter_func(session->data);
@@ -102,7 +101,7 @@ deleter_main(void *)
 void
 InkMgmtApiCtxDeleter(void *data)
 {
-  TSCfgContextDestroy((TSCfgContext) data);
+  TSCfgContextDestroy((TSCfgContext)data);
 }
 
 //-------------------------------------------------------------------------
@@ -114,7 +113,7 @@ WebHttpSessionInit()
 {
   time_t now;
   time(&now);
-  WebSeedRand((long) now);
+  WebSeedRand((long)now);
   g_session_ht = ink_hash_table_create(InkHashTableKeyType_String);
   ink_mutex_init(&g_session_mutex, "g_session_mutex");
   ink_thread_create(deleter_main, NULL);
@@ -145,7 +144,7 @@ WebHttpSessionStore(char *key, void *data, WebHttpSessionDeleter deleter_func)
   session->created = now;
   session->data = data;
   session->deleter_func = deleter_func;
-  ink_hash_table_insert(g_session_ht, key, (void *) session);
+  ink_hash_table_insert(g_session_ht, key, (void *)session);
 
 Ldone:
   ink_mutex_release(&g_session_mutex);
@@ -165,7 +164,7 @@ WebHttpSessionRetrieve(char *key, void **data)
     return WEB_HTTP_ERR_FAIL;
   }
   ink_mutex_acquire(&g_session_mutex);
-  if (!ink_hash_table_lookup(g_session_ht, key, (void **) &session)) {
+  if (!ink_hash_table_lookup(g_session_ht, key, (void **)&session)) {
     err = WEB_HTTP_ERR_FAIL;
   } else {
     *data = session->data;
@@ -188,7 +187,7 @@ WebHttpSessionDelete(char *key)
     return WEB_HTTP_ERR_FAIL;
   }
   ink_mutex_acquire(&g_session_mutex);
-  if (!ink_hash_table_lookup(g_session_ht, key, (void **) &session)) {
+  if (!ink_hash_table_lookup(g_session_ht, key, (void **)&session)) {
     err = WEB_HTTP_ERR_FAIL;
     goto Ldone;
   }
@@ -210,9 +209,3 @@ WebHttpMakeSessionKey_Xmalloc()
   snprintf(session_key_str, SESSION_KEY_LEN + 1, "%lx", session_key);
   return session_key_str;
 }
-
-
-
-
-
-

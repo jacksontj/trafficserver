@@ -33,7 +33,7 @@
 
 #include "P_RecCore.h"
 
-typedef void (*WebHttpSessionDeleter) (void *data);
+typedef void (*WebHttpSessionDeleter)(void *data);
 void InkMgmtApiCtxDeleter(void *data);
 
 void WebHttpSessionInit();

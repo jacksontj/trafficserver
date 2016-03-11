@@ -39,30 +39,30 @@
  * Indicates a single-writer many-reader workload. Mutually
  * exclusive with CK_RHS_MODE_MPMC
  */
-#define CK_RHS_MODE_SPMC		1
+#define CK_RHS_MODE_SPMC 1
 
 /*
  * Indicates that values to be stored are not pointers but
  * values. Allows for full precision. Mutually exclusive
  * with CK_RHS_MODE_OBJECT.
  */
-#define CK_RHS_MODE_DIRECT	2
+#define CK_RHS_MODE_DIRECT 2
 
-/* 
+/*
  * Indicates that the values to be stored are pointers.
  * Allows for space optimizations in the presence of pointer
  * packing. Mutually exclusive with CK_RHS_MODE_DIRECT.
  */
-#define CK_RHS_MODE_OBJECT	8
+#define CK_RHS_MODE_OBJECT 8
 
 /*
  * Indicated that the load is read-mostly, so get should be optimized
  * over put and delete
  */
-#define CK_RHS_MODE_READ_MOSTLY	16
+#define CK_RHS_MODE_READ_MOSTLY 16
 
 /* Currently unsupported. */
-#define CK_RHS_MODE_MPMC    (void)
+#define CK_RHS_MODE_MPMC (void)
 
 /*
  * Hash callback function.
@@ -81,37 +81,39 @@ typedef bool ck_rhs_compare_cb_t(const void *, const void *);
 
 struct ck_rhs_map;
 struct ck_rhs {
-	struct ck_malloc *m;
-	struct ck_rhs_map *map;
-	unsigned int mode;
-	unsigned long seed;
-	ck_rhs_hash_cb_t *hf;
-	ck_rhs_compare_cb_t *compare;
+  struct ck_malloc *m;
+  struct ck_rhs_map *map;
+  unsigned int mode;
+  unsigned long seed;
+  ck_rhs_hash_cb_t *hf;
+  ck_rhs_compare_cb_t *compare;
 };
 typedef struct ck_rhs ck_rhs_t;
 
 struct ck_rhs_stat {
-	unsigned long n_entries;
-	unsigned int probe_maximum;
+  unsigned long n_entries;
+  unsigned int probe_maximum;
 };
 
 struct ck_rhs_iterator {
-	void **cursor;
-	unsigned long offset;
+  void **cursor;
+  unsigned long offset;
 };
 typedef struct ck_rhs_iterator ck_rhs_iterator_t;
 
-#define CK_RHS_ITERATOR_INITIALIZER { NULL, 0 }
+#define CK_RHS_ITERATOR_INITIALIZER \
+  {                                 \
+    NULL, 0                         \
+  }
 
 /* Convenience wrapper to table hash function. */
 #define CK_RHS_HASH(T, F, K) F((K), (T)->seed)
 
 void ck_rhs_iterator_init(ck_rhs_iterator_t *);
 bool ck_rhs_next(ck_rhs_t *, ck_rhs_iterator_t *, void **);
-bool ck_rhs_move(ck_rhs_t *, ck_rhs_t *, ck_rhs_hash_cb_t *,
-    ck_rhs_compare_cb_t *, struct ck_malloc *);
-bool ck_rhs_init(ck_rhs_t *, unsigned int, ck_rhs_hash_cb_t *,
-    ck_rhs_compare_cb_t *, struct ck_malloc *, unsigned long, unsigned long);
+bool ck_rhs_move(ck_rhs_t *, ck_rhs_t *, ck_rhs_hash_cb_t *, ck_rhs_compare_cb_t *, struct ck_malloc *);
+bool ck_rhs_init(ck_rhs_t *, unsigned int, ck_rhs_hash_cb_t *, ck_rhs_compare_cb_t *, struct ck_malloc *, unsigned long,
+                 unsigned long);
 void ck_rhs_destroy(ck_rhs_t *);
 void *ck_rhs_get(ck_rhs_t *, unsigned long, const void *);
 bool ck_rhs_put(ck_rhs_t *, unsigned long, const void *);

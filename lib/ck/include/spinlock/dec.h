@@ -41,103 +41,100 @@
  * idea is that a decrement operation is cheaper than a compare-and-swap.
  */
 struct ck_spinlock_dec {
-	unsigned int value;
+  unsigned int value;
 };
 typedef struct ck_spinlock_dec ck_spinlock_dec_t;
 
-#define CK_SPINLOCK_DEC_INITIALIZER	{1}
+#define CK_SPINLOCK_DEC_INITIALIZER \
+  {                                 \
+    1                               \
+  }
 
 CK_CC_INLINE static void
 ck_spinlock_dec_init(struct ck_spinlock_dec *lock)
 {
-
-	lock->value = 1;
-	ck_pr_barrier();
-	return;
+  lock->value = 1;
+  ck_pr_barrier();
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_dec_trylock(struct ck_spinlock_dec *lock)
 {
-	unsigned int value;
+  unsigned int value;
 
-	value = ck_pr_fas_uint(&lock->value, 0);
-	if (value == 1) {
-		ck_pr_fence_acquire();
-		return true;
-	}
+  value = ck_pr_fas_uint(&lock->value, 0);
+  if (value == 1) {
+    ck_pr_fence_acquire();
+    return true;
+  }
 
-	return false;
+  return false;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_dec_locked(struct ck_spinlock_dec *lock)
 {
-
-	ck_pr_fence_load();
-	return ck_pr_load_uint(&lock->value) != 1;
+  ck_pr_fence_load();
+  return ck_pr_load_uint(&lock->value) != 1;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_dec_lock(struct ck_spinlock_dec *lock)
 {
-	bool r;
+  bool r;
 
-	for (;;) {
-		/*
-		 * Only one thread is guaranteed to decrement lock to 0.
-		 * Overflow must be protected against. No more than
-		 * UINT_MAX lock requests can happen while the lock is held.
-		 */
-		ck_pr_dec_uint_zero(&lock->value, &r);
-		if (r == true)
-			break;
+  for (;;) {
+    /*
+     * Only one thread is guaranteed to decrement lock to 0.
+     * Overflow must be protected against. No more than
+     * UINT_MAX lock requests can happen while the lock is held.
+     */
+    ck_pr_dec_uint_zero(&lock->value, &r);
+    if (r == true)
+      break;
 
-		/* Load value without generating write cycles. */
-		while (ck_pr_load_uint(&lock->value) != 1)
-			ck_pr_stall();
-	}
+    /* Load value without generating write cycles. */
+    while (ck_pr_load_uint(&lock->value) != 1)
+      ck_pr_stall();
+  }
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_dec_lock_eb(struct ck_spinlock_dec *lock)
 {
-	ck_backoff_t backoff = CK_BACKOFF_INITIALIZER;
-	bool r;
+  ck_backoff_t backoff = CK_BACKOFF_INITIALIZER;
+  bool r;
 
-	for (;;) {
-		ck_pr_dec_uint_zero(&lock->value, &r);
-		if (r == true)
-			break;
+  for (;;) {
+    ck_pr_dec_uint_zero(&lock->value, &r);
+    if (r == true)
+      break;
 
-		ck_backoff_eb(&backoff);
-	}
+    ck_backoff_eb(&backoff);
+  }
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_dec_unlock(struct ck_spinlock_dec *lock)
 {
+  ck_pr_fence_release();
 
-	ck_pr_fence_release();
-
-	/* Unconditionally set lock value to 1 so someone can decrement lock to 0. */
-	ck_pr_store_uint(&lock->value, 1);
-	return;
+  /* Unconditionally set lock value to 1 so someone can decrement lock to 0. */
+  ck_pr_store_uint(&lock->value, 1);
+  return;
 }
 
-CK_ELIDE_PROTOTYPE(ck_spinlock_dec, ck_spinlock_dec_t,
-    ck_spinlock_dec_locked, ck_spinlock_dec_lock,
-    ck_spinlock_dec_locked, ck_spinlock_dec_unlock)
+CK_ELIDE_PROTOTYPE(ck_spinlock_dec, ck_spinlock_dec_t, ck_spinlock_dec_locked, ck_spinlock_dec_lock, ck_spinlock_dec_locked,
+                   ck_spinlock_dec_unlock)
 
-CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock_dec, ck_spinlock_dec_t,
-    ck_spinlock_dec_locked, ck_spinlock_dec_trylock)
+CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock_dec, ck_spinlock_dec_t, ck_spinlock_dec_locked, ck_spinlock_dec_trylock)
 
 #endif /* CK_F_SPINLOCK_DEC */
 #endif /* _CK_SPINLOCK_DEC_H */
-

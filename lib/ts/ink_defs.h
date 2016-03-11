@@ -22,29 +22,29 @@
  */
 
 #ifndef _ink_defs_h
-#define	_ink_defs_h
+#define _ink_defs_h
 
 
 #include "ink_config.h"
 #include <stddef.h>
 
 #ifdef HAVE_STDINT_H
-# include <stdint.h>
+#include <stdint.h>
 #else
 // TODO: Add "standard" int types?
 #endif
 
 #ifdef HAVE_INTTYPES_H
-# include <inttypes.h>
+#include <inttypes.h>
 #else
 // TODO: add PRI*64 stuff?
 #endif
 
 #ifndef INT64_MIN
 #define INT64_MAX (9223372036854775807LL)
-#define INT64_MIN (-INT64_MAX -1LL)
+#define INT64_MIN (-INT64_MAX - 1LL)
 #define INT32_MAX (2147483647)
-#define INT32_MIN (-2147483647-1)
+#define INT32_MIN (-2147483647 - 1)
 #endif
 
 #define POSIX_THREAD
@@ -72,60 +72,63 @@
 // Need to use this to avoid problems when calling variadic functions
 // with many arguments. In such cases, a raw '0' or NULL can be
 // interpreted as 32 bits
-#define NULL_PTR static_cast<void*>(0)
+#define NULL_PTR static_cast<void *>(0)
 
 // Determine the element count for an array.
 #ifdef __cplusplus
-template<typename T, unsigned N>
+template <typename T, unsigned N>
 static inline unsigned
-countof(const T (&)[N]) {
+countof(const T(&)[N])
+{
   return N;
 }
 #else
-#  define countof(x) ((unsigned)(sizeof(x)/sizeof((x)[0])))
+#define countof(x) ((unsigned)(sizeof(x) / sizeof((x)[0])))
 #endif
 
-#define SOCKOPT_ON ((char*)&on)
-#define SOCKOPT_OFF ((char*)&off)
+#define SOCKOPT_ON ((char *)&on)
+#define SOCKOPT_OFF ((char *)&off)
 
 #ifndef ABS
-#define ABS(x) (((x) < 0) ? ( - (x)) : (x))
+#define ABS(x) (((x) < 0) ? (-(x)) : (x))
 #endif
 
 #ifndef MAX
-#define MAX(x,y) (((x) >= (y)) ? (x) : (y))
+#define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #endif
 
 #ifndef MIN
-#define MIN(x,y) (((x) <= (y)) ? (x) : (y))
+#define MIN(x, y) (((x) <= (y)) ? (x) : (y))
 #endif
 
-#define ATS_UNUSED __attribute__ ((unused))
-#define ATS_WARN_IF_UNUSED __attribute__ ((warn_unused_result))
-#define	ATS_UNUSED_RETURN(x)	if (x) {}
+#define ATS_UNUSED __attribute__((unused))
+#define ATS_WARN_IF_UNUSED __attribute__((warn_unused_result))
+#define ATS_UNUSED_RETURN(x) \
+  if (x) {                   \
+  }
 
 #ifndef likely
-#define likely(x)	__builtin_expect (!!(x), 1)
+#define likely(x) __builtin_expect(!!(x), 1)
 #endif
 #ifndef unlikely
-#define unlikely(x)	__builtin_expect (!!(x), 0)
+#define unlikely(x) __builtin_expect(!!(x), 0)
 #endif
 
 
 #if TS_USE_HWLOC
-#  include <hwloc.h>
+#include <hwloc.h>
 #endif
 
 #ifndef ROUNDUP
-#define ROUNDUP(x, y) ((((x)+((y)-1))/(y))*(y))
+#define ROUNDUP(x, y) ((((x) + ((y)-1)) / (y)) * (y))
 #endif
 
 /* Types
 */
-typedef void *(*VPVP_PFN) (void *);
-typedef void (*VVP_PFN) (void *);
-typedef void (*VV_PFN) (void);
-typedef void (*VI_PFN) (int);
+typedef void *(*VPVP_PFN)(void *);
+typedef void (*VVP_PFN)(void *);
+typedef void (*VV_PFN)(void);
+typedef void (*VI_PFN)(int);
 
 /* Variables
 */
@@ -146,8 +149,9 @@ hwloc_topology_t ink_get_topology();
 /** Constants.
  */
 #ifdef __cplusplus
-namespace ts {
-  static const int NO_FD = -1; ///< No or invalid file descriptor.
+namespace ts
+{
+static const int NO_FD = -1; ///< No or invalid file descriptor.
 }
 #endif
 

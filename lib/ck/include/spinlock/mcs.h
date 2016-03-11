@@ -36,114 +36,109 @@
 #define CK_F_SPINLOCK_MCS
 
 struct ck_spinlock_mcs {
-	unsigned int locked;
-	struct ck_spinlock_mcs *next;
+  unsigned int locked;
+  struct ck_spinlock_mcs *next;
 };
-typedef struct ck_spinlock_mcs * ck_spinlock_mcs_t;
+typedef struct ck_spinlock_mcs *ck_spinlock_mcs_t;
 typedef struct ck_spinlock_mcs ck_spinlock_mcs_context_t;
 
-#define CK_SPINLOCK_MCS_INITIALIZER	    (NULL)
+#define CK_SPINLOCK_MCS_INITIALIZER (NULL)
 
 CK_CC_INLINE static void
 ck_spinlock_mcs_init(struct ck_spinlock_mcs **queue)
 {
-
-	*queue = NULL;
-	ck_pr_barrier();
-	return;
+  *queue = NULL;
+  ck_pr_barrier();
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_mcs_trylock(struct ck_spinlock_mcs **queue, struct ck_spinlock_mcs *node)
 {
+  node->locked = true;
+  node->next = NULL;
+  ck_pr_fence_store_atomic();
 
-	node->locked = true;
-	node->next = NULL;
-	ck_pr_fence_store_atomic();
+  if (ck_pr_cas_ptr(queue, NULL, node) == true) {
+    ck_pr_fence_acquire();
+    return true;
+  }
 
-	if (ck_pr_cas_ptr(queue, NULL, node) == true) {
-		ck_pr_fence_acquire();
-		return true;
-	}
-
-	return false;
+  return false;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_mcs_locked(struct ck_spinlock_mcs **queue)
 {
-
-	ck_pr_fence_load();
-	return ck_pr_load_ptr(queue) != NULL;
+  ck_pr_fence_load();
+  return ck_pr_load_ptr(queue) != NULL;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_mcs_lock(struct ck_spinlock_mcs **queue, struct ck_spinlock_mcs *node)
 {
-	struct ck_spinlock_mcs *previous;
+  struct ck_spinlock_mcs *previous;
 
-	/*
-	 * In the case that there is a successor, let them know they must wait
-	 * for us to unlock.
-	 */
-	node->locked = true;
-	node->next = NULL;
-	ck_pr_fence_store_atomic();
+  /*
+   * In the case that there is a successor, let them know they must wait
+   * for us to unlock.
+   */
+  node->locked = true;
+  node->next = NULL;
+  ck_pr_fence_store_atomic();
 
-	/*
-	 * Swap current tail with current lock request. If the swap operation
-	 * returns NULL, it means the queue was empty. If the queue was empty,
-	 * then the operation is complete.
-	 */
-	previous = ck_pr_fas_ptr(queue, node);
-	if (previous != NULL) {
-		/* Let the previous lock holder know that we are waiting on them. */
-		ck_pr_store_ptr(&previous->next, node);
-		while (ck_pr_load_uint(&node->locked) == true)
-			ck_pr_stall();
-	}
+  /*
+   * Swap current tail with current lock request. If the swap operation
+   * returns NULL, it means the queue was empty. If the queue was empty,
+   * then the operation is complete.
+   */
+  previous = ck_pr_fas_ptr(queue, node);
+  if (previous != NULL) {
+    /* Let the previous lock holder know that we are waiting on them. */
+    ck_pr_store_ptr(&previous->next, node);
+    while (ck_pr_load_uint(&node->locked) == true)
+      ck_pr_stall();
+  }
 
-	ck_pr_fence_load();
-	return;
+  ck_pr_fence_load();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_mcs_unlock(struct ck_spinlock_mcs **queue, struct ck_spinlock_mcs *node)
 {
-	struct ck_spinlock_mcs *next;
+  struct ck_spinlock_mcs *next;
 
-	ck_pr_fence_release();
+  ck_pr_fence_release();
 
-	next = ck_pr_load_ptr(&node->next);
-	if (next == NULL) {
-		/*
-		 * If there is no request following us then it is a possibilty
-		 * that we are the current tail. In this case, we may just
-		 * mark the spinlock queue as empty.
-		 */
-		if (ck_pr_load_ptr(queue) == node &&
-		    ck_pr_cas_ptr(queue, node, NULL) == true) {
-			return;
-		}
+  next = ck_pr_load_ptr(&node->next);
+  if (next == NULL) {
+    /*
+     * If there is no request following us then it is a possibilty
+     * that we are the current tail. In this case, we may just
+     * mark the spinlock queue as empty.
+     */
+    if (ck_pr_load_ptr(queue) == node && ck_pr_cas_ptr(queue, node, NULL) == true) {
+      return;
+    }
 
-		/*
-		 * If the node is not the current tail then a lock operation is
-		 * in-progress. In this case, busy-wait until the queue is in
-		 * a consistent state to wake up the incoming lock request.
-		 */
-		for (;;) {
-			next = ck_pr_load_ptr(&node->next);
-			if (next != NULL)
-				break;
+    /*
+     * If the node is not the current tail then a lock operation is
+     * in-progress. In this case, busy-wait until the queue is in
+     * a consistent state to wake up the incoming lock request.
+     */
+    for (;;) {
+      next = ck_pr_load_ptr(&node->next);
+      if (next != NULL)
+        break;
 
-			ck_pr_stall();
-		}
-	}
+      ck_pr_stall();
+    }
+  }
 
-	/* Allow the next lock operation to complete. */
-	ck_pr_store_uint(&next->locked, false);
-	return;
+  /* Allow the next lock operation to complete. */
+  ck_pr_store_uint(&next->locked, false);
+  return;
 }
 #endif /* CK_F_SPINLOCK_MCS */
 #endif /* _CK_SPINLOCK_MCS_H */
-

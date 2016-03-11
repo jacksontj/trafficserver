@@ -39,7 +39,7 @@ class RecTreeNode
 {
 public:
   RecTreeNode(const char *name = NULL);
-   ~RecTreeNode();
+  ~RecTreeNode();
 
   RecRecord *record_ptr;
   RecTree *subtree_ptr;
@@ -63,17 +63,20 @@ public:
   RecTree(RecTreeNode *);
   ~RecTree();
 
-  inline RecTreeNode *first()
+  inline RecTreeNode *
+  first()
   {
     return m_root.head;
   };
 
-  inline RecTreeNode *last()
+  inline RecTreeNode *
+  last()
   {
     return m_root.tail;
   };
 
-  inline RecTreeNode *next(RecTreeNode * current)
+  inline RecTreeNode *
+  next(RecTreeNode *current)
   {
     return (current->link).next;
   };

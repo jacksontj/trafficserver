@@ -32,63 +32,63 @@
 #include <stdbool.h>
 
 struct ck_sequence {
-	unsigned int sequence;
+  unsigned int sequence;
 };
 typedef struct ck_sequence ck_sequence_t;
 
-#define CK_SEQUENCE_INITIALIZER { .sequence = 0 }
+#define CK_SEQUENCE_INITIALIZER \
+  {                             \
+    .sequence = 0               \
+  }
 
 CK_CC_INLINE static void
 ck_sequence_init(struct ck_sequence *sq)
 {
-
-	ck_pr_store_uint(&sq->sequence, 0);
-	return;
+  ck_pr_store_uint(&sq->sequence, 0);
+  return;
 }
 
 CK_CC_INLINE static unsigned int
 ck_sequence_read_begin(struct ck_sequence *sq)
 {
-	unsigned int version;
+  unsigned int version;
 
-	for (;;) {
-		version = ck_pr_load_uint(&sq->sequence);
+  for (;;) {
+    version = ck_pr_load_uint(&sq->sequence);
 
-		/*
-		 * If a sequence is even then associated data may be in a
-		 * consistent state.
-		 */
-		if (CK_CC_LIKELY((version & 1) == 0))
-			break;
+    /*
+     * If a sequence is even then associated data may be in a
+     * consistent state.
+     */
+    if (CK_CC_LIKELY((version & 1) == 0))
+      break;
 
-		/*
-		 * If a sequence is odd then a thread is in the middle of an
-		 * update. Retry the read to avoid operating on inconsistent
-		 * data.
-		 */
-		ck_pr_stall();
-	}
+    /*
+     * If a sequence is odd then a thread is in the middle of an
+     * update. Retry the read to avoid operating on inconsistent
+     * data.
+     */
+    ck_pr_stall();
+  }
 
-	ck_pr_fence_load();
-	return version;
+  ck_pr_fence_load();
+  return version;
 }
 
 CK_CC_INLINE static bool
 ck_sequence_read_retry(struct ck_sequence *sq, unsigned int version)
 {
-
-	/*
-	 * If the sequence number was updated then a read should be
-	 * re-attempted.
-	 */
-	ck_pr_fence_load();
-	return ck_pr_load_uint(&sq->sequence) != version;
+  /*
+   * If the sequence number was updated then a read should be
+   * re-attempted.
+   */
+  ck_pr_fence_load();
+  return ck_pr_load_uint(&sq->sequence) != version;
 }
 
-#define CK_SEQUENCE_READ(seqlock, version) 						\
-	for (*(version) = 1;								\
-	    (*(version) != 0) && (*(version) = ck_sequence_read_begin(seqlock), 1);	\
-	    *(version) = ck_sequence_read_retry(seqlock, *(version)))
+#define CK_SEQUENCE_READ(seqlock, version)                                                     \
+  for (*(version) = 1; (*(version) != 0) && (*(version) = ck_sequence_read_begin(seqlock), 1); \
+       *(version) = ck_sequence_read_retry(seqlock, *(version)))
 
 /*
  * This must be called after a successful mutex acquisition.
@@ -96,14 +96,13 @@ ck_sequence_read_retry(struct ck_sequence *sq, unsigned int version)
 CK_CC_INLINE static void
 ck_sequence_write_begin(struct ck_sequence *sq)
 {
-
-	/*
-	 * Increment the sequence to an odd number to indicate
-	 * the beginning of a write update.
-	 */
-	ck_pr_inc_uint(&sq->sequence);
-	ck_pr_fence_store();
-	return;
+  /*
+   * Increment the sequence to an odd number to indicate
+   * the beginning of a write update.
+   */
+  ck_pr_inc_uint(&sq->sequence);
+  ck_pr_fence_store();
+  return;
 }
 
 /*
@@ -112,15 +111,13 @@ ck_sequence_write_begin(struct ck_sequence *sq)
 CK_CC_INLINE static void
 ck_sequence_write_end(struct ck_sequence *sq)
 {
-
-	/*
-	 * Increment the sequence to an even number to indicate
-	 * completion of a write update.
-	 */
-	ck_pr_fence_store();
-	ck_pr_inc_uint(&sq->sequence);
-	return;
+  /*
+   * Increment the sequence to an even number to indicate
+   * completion of a write update.
+   */
+  ck_pr_fence_store();
+  ck_pr_inc_uint(&sq->sequence);
+  return;
 }
 
 #endif /* _CK_SEQUENCE_H */
-

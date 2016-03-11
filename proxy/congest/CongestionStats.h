@@ -39,13 +39,8 @@ extern RecRawStatBlock *congest_rsb;
 /* Instead of enumerating the stats in DynamicStats.h, each module needs
    to enumerate its stats separately and register them with librecords
    */
-enum
-{
-  congested_on_F_stat,
-  congested_on_M_stat,
-  congest_num_stats
-};
-#define CONGEST_SUM_GLOBAL_DYN_STAT(_x, _y) RecIncrGlobalRawStatSum(congest_rsb, (int) _x, _y)
+enum { congested_on_F_stat, congested_on_M_stat, congest_num_stats };
+#define CONGEST_SUM_GLOBAL_DYN_STAT(_x, _y) RecIncrGlobalRawStatSum(congest_rsb, (int)_x, _y)
 #define CONGEST_INCREMENT_DYN_STAT(_x) RecIncrRawStat(congest_rsb, mutex->thread_holding, (int)_x, 1)
 
 #endif /* CONGESTION_STATS_H_ */

@@ -3,4 +3,3 @@
 #define LOCK ck_spinlock_cas_lock_eb(&lock)
 #define UNLOCK ck_spinlock_cas_unlock(&lock)
 #define LOCKED ck_spinlock_cas_locked(&lock)
-

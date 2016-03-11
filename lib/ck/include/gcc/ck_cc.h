@@ -37,7 +37,7 @@
 #define CK_CC_IMM_U32
 #else
 #define CK_CC_UNUSED __attribute__((unused))
-#define CK_CC_USED   __attribute__((used))
+#define CK_CC_USED __attribute__((used))
 #define CK_CC_IMM "i"
 #if defined(__x86_64__) || defined(__x86__)
 #define CK_CC_IMM_U32 "Z"
@@ -109,29 +109,25 @@
 CK_CC_INLINE static int
 ck_cc_ffs(unsigned int x)
 {
-
-	return __builtin_ffs(x);
+  return __builtin_ffs(x);
 }
 
 CK_CC_INLINE static int
 ck_cc_clz(unsigned int x)
 {
-
-	return __builtin_clz(x);
+  return __builtin_clz(x);
 }
 
 CK_CC_INLINE static int
 ck_cc_ctz(unsigned int x)
 {
-
-	return __builtin_ctz(x);
+  return __builtin_ctz(x);
 }
 
 CK_CC_INLINE static int
 ck_cc_popcount(unsigned int x)
 {
-
-	return __builtin_popcount(x);
+  return __builtin_popcount(x);
 }
 
 #endif /* _CK_GCC_CC_H */

@@ -36,15 +36,17 @@
  * Container function.
  * This relies on (compiler) implementation-defined behavior.
  */
-#define CK_CC_CONTAINER(F, T, M, N)						\
-	CK_CC_INLINE static T *							\
-	N(F *p)									\
-	{									\
-		const F *n = p;							\
-		return (T *)(void *)(((char *)n) - ((size_t)&((T *)0)->M));	\
-	}
+#define CK_CC_CONTAINER(F, T, M, N)                               \
+  CK_CC_INLINE static T *N(F *p)                                  \
+  {                                                               \
+    const F *n = p;                                               \
+    return (T *)(void *)(((char *)n) - ((size_t) & ((T *)0)->M)); \
+  }
 
-#define CK_CC_PAD(x) union { char pad[x]; }
+#define CK_CC_PAD(x) \
+  union {            \
+    char pad[x];     \
+  }
 
 #ifndef CK_CC_ALIASED
 #define CK_CC_ALIASED
@@ -91,14 +93,15 @@
 CK_CC_INLINE static int
 ck_cc_ffs(unsigned int x)
 {
-	unsigned int i;
+  unsigned int i;
 
-	if (x == 0)
-		return 0;
+  if (x == 0)
+    return 0;
 
-	for (i = 1; (x & 1) == 0; i++, x >>= 1);
+  for (i = 1; (x & 1) == 0; i++, x >>= 1)
+    ;
 
-	return i;
+  return i;
 }
 #endif
 
@@ -109,16 +112,16 @@ ck_cc_ffs(unsigned int x)
 CK_CC_INLINE static int
 ck_cc_clz(unsigned int x)
 {
-	unsigned int count, i;
+  unsigned int count, i;
 
-	for (count = 0, i = sizeof(unsigned int) * CHAR_BIT; i > 0; count++) {
-		unsigned int bit = 1U << --i;
+  for (count = 0, i = sizeof(unsigned int) * CHAR_BIT; i > 0; count++) {
+    unsigned int bit = 1U << --i;
 
-		if (x & bit)
-			break;
-	}
+    if (x & bit)
+      break;
+  }
 
-	return count;
+  return count;
 }
 #endif
 
@@ -127,14 +130,15 @@ ck_cc_clz(unsigned int x)
 CK_CC_INLINE static int
 ck_cc_ctz(unsigned int x)
 {
-	unsigned int i;
+  unsigned int i;
 
-	if (x == 0)
-		return 0;
+  if (x == 0)
+    return 0;
 
-	for (i = 0; (x & 1) == 0; i++, x >>= 1);
+  for (i = 0; (x & 1) == 0; i++, x >>= 1)
+    ;
 
-	return i;
+  return i;
 }
 #endif
 
@@ -143,12 +147,12 @@ ck_cc_ctz(unsigned int x)
 CK_CC_INLINE static int
 ck_cc_popcount(unsigned int x)
 {
-	unsigned int acc;
+  unsigned int acc;
 
-	for (acc = 0; x != 0; x >>= 1)
-		acc += x & 1;
+  for (acc = 0; x != 0; x >>= 1)
+    acc += x & 1;
 
-	return acc;
+  return acc;
 }
 #endif
 

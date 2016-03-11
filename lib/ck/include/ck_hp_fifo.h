@@ -34,7 +34,7 @@
 #include <stddef.h>
 
 #define CK_HP_FIFO_SLOTS_COUNT (2)
-#define CK_HP_FIFO_SLOTS_SIZE  (sizeof(void *) * CK_HP_FIFO_SLOTS_COUNT)
+#define CK_HP_FIFO_SLOTS_SIZE (sizeof(void *) * CK_HP_FIFO_SLOTS_COUNT)
 
 /*
  * Though it is possible to embed the data structure, measurements need
@@ -44,179 +44,161 @@
  * pending queue. This may lead to terrible cache line bouncing.
  */
 struct ck_hp_fifo_entry {
-	void *value;
-	ck_hp_hazard_t hazard;
-	struct ck_hp_fifo_entry *next;
+  void *value;
+  ck_hp_hazard_t hazard;
+  struct ck_hp_fifo_entry *next;
 };
 typedef struct ck_hp_fifo_entry ck_hp_fifo_entry_t;
 
 struct ck_hp_fifo {
-	struct ck_hp_fifo_entry *head;
-	struct ck_hp_fifo_entry *tail;
+  struct ck_hp_fifo_entry *head;
+  struct ck_hp_fifo_entry *tail;
 };
 typedef struct ck_hp_fifo ck_hp_fifo_t;
 
 CK_CC_INLINE static void
 ck_hp_fifo_init(struct ck_hp_fifo *fifo, struct ck_hp_fifo_entry *stub)
 {
-
-	fifo->head = fifo->tail = stub;
-	stub->next = NULL;
-	return;
+  fifo->head = fifo->tail = stub;
+  stub->next = NULL;
+  return;
 }
 
 CK_CC_INLINE static void
 ck_hp_fifo_deinit(struct ck_hp_fifo *fifo, struct ck_hp_fifo_entry **stub)
 {
-
-	*stub = fifo->head;
-	fifo->head = fifo->tail = NULL;
-	return;
+  *stub = fifo->head;
+  fifo->head = fifo->tail = NULL;
+  return;
 }
 
 CK_CC_INLINE static void
-ck_hp_fifo_enqueue_mpmc(ck_hp_record_t *record,
-			struct ck_hp_fifo *fifo,
-			struct ck_hp_fifo_entry *entry,
-			void *value)
+ck_hp_fifo_enqueue_mpmc(ck_hp_record_t *record, struct ck_hp_fifo *fifo, struct ck_hp_fifo_entry *entry, void *value)
 {
-	struct ck_hp_fifo_entry *tail, *next;
+  struct ck_hp_fifo_entry *tail, *next;
 
-	entry->value = value;
-	entry->next = NULL;
-	ck_pr_fence_store_atomic();
+  entry->value = value;
+  entry->next = NULL;
+  ck_pr_fence_store_atomic();
 
-	for (;;) {
-		tail = ck_pr_load_ptr(&fifo->tail);
-		ck_hp_set(record, 0, tail);
-		ck_pr_fence_store_load();
-		if (tail != ck_pr_load_ptr(&fifo->tail))
-			continue;
+  for (;;) {
+    tail = ck_pr_load_ptr(&fifo->tail);
+    ck_hp_set(record, 0, tail);
+    ck_pr_fence_store_load();
+    if (tail != ck_pr_load_ptr(&fifo->tail))
+      continue;
 
-		next = ck_pr_load_ptr(&tail->next);
-		if (next != NULL) {
-			ck_pr_cas_ptr(&fifo->tail, tail, next);
-			continue;
-		} else if (ck_pr_cas_ptr(&fifo->tail->next, next, entry) == true)
-			break;
-	}
+    next = ck_pr_load_ptr(&tail->next);
+    if (next != NULL) {
+      ck_pr_cas_ptr(&fifo->tail, tail, next);
+      continue;
+    } else if (ck_pr_cas_ptr(&fifo->tail->next, next, entry) == true)
+      break;
+  }
 
-	ck_pr_fence_atomic();
-	ck_pr_cas_ptr(&fifo->tail, tail, entry);
-	return;
+  ck_pr_fence_atomic();
+  ck_pr_cas_ptr(&fifo->tail, tail, entry);
+  return;
 }
 
 CK_CC_INLINE static bool
-ck_hp_fifo_tryenqueue_mpmc(ck_hp_record_t *record,
-			   struct ck_hp_fifo *fifo,
-			   struct ck_hp_fifo_entry *entry,
-			   void *value)
+ck_hp_fifo_tryenqueue_mpmc(ck_hp_record_t *record, struct ck_hp_fifo *fifo, struct ck_hp_fifo_entry *entry, void *value)
 {
-	struct ck_hp_fifo_entry *tail, *next;
+  struct ck_hp_fifo_entry *tail, *next;
 
-	entry->value = value;
-	entry->next = NULL;
-	ck_pr_fence_store_atomic();
+  entry->value = value;
+  entry->next = NULL;
+  ck_pr_fence_store_atomic();
 
-	tail = ck_pr_load_ptr(&fifo->tail);
-	ck_hp_set(record, 0, tail);
-	ck_pr_fence_store_load();
-	if (tail != ck_pr_load_ptr(&fifo->tail))
-		return false;
+  tail = ck_pr_load_ptr(&fifo->tail);
+  ck_hp_set(record, 0, tail);
+  ck_pr_fence_store_load();
+  if (tail != ck_pr_load_ptr(&fifo->tail))
+    return false;
 
-	next = ck_pr_load_ptr(&tail->next);
-	if (next != NULL) {
-		ck_pr_cas_ptr(&fifo->tail, tail, next);
-		return false;
-	} else if (ck_pr_cas_ptr(&fifo->tail->next, next, entry) == false)
-		return false;
+  next = ck_pr_load_ptr(&tail->next);
+  if (next != NULL) {
+    ck_pr_cas_ptr(&fifo->tail, tail, next);
+    return false;
+  } else if (ck_pr_cas_ptr(&fifo->tail->next, next, entry) == false)
+    return false;
 
-	ck_pr_fence_atomic();
-	ck_pr_cas_ptr(&fifo->tail, tail, entry);
-	return true;
+  ck_pr_fence_atomic();
+  ck_pr_cas_ptr(&fifo->tail, tail, entry);
+  return true;
 }
 
 CK_CC_INLINE static struct ck_hp_fifo_entry *
-ck_hp_fifo_dequeue_mpmc(ck_hp_record_t *record,
-			struct ck_hp_fifo *fifo,
-			void *value)
+ck_hp_fifo_dequeue_mpmc(ck_hp_record_t *record, struct ck_hp_fifo *fifo, void *value)
 {
-	struct ck_hp_fifo_entry *head, *tail, *next;
+  struct ck_hp_fifo_entry *head, *tail, *next;
 
-	for (;;) {
-		head = ck_pr_load_ptr(&fifo->head);
-		ck_pr_fence_load();
-		tail = ck_pr_load_ptr(&fifo->tail);
-		ck_hp_set(record, 0, head);
-		ck_pr_fence_store_load();
-		if (head != ck_pr_load_ptr(&fifo->head))
-			continue;
+  for (;;) {
+    head = ck_pr_load_ptr(&fifo->head);
+    ck_pr_fence_load();
+    tail = ck_pr_load_ptr(&fifo->tail);
+    ck_hp_set(record, 0, head);
+    ck_pr_fence_store_load();
+    if (head != ck_pr_load_ptr(&fifo->head))
+      continue;
 
-		next = ck_pr_load_ptr(&head->next);
-		ck_hp_set(record, 1, next);
-		ck_pr_fence_store_load();
-		if (head != ck_pr_load_ptr(&fifo->head))
-			continue;
+    next = ck_pr_load_ptr(&head->next);
+    ck_hp_set(record, 1, next);
+    ck_pr_fence_store_load();
+    if (head != ck_pr_load_ptr(&fifo->head))
+      continue;
 
-		if (head == tail) {
-			if (next == NULL)
-				return NULL;
+    if (head == tail) {
+      if (next == NULL)
+        return NULL;
 
-			ck_pr_cas_ptr(&fifo->tail, tail, next);
-			continue;
-		} else if (ck_pr_cas_ptr(&fifo->head, head, next) == true)
-			break;
-	}
+      ck_pr_cas_ptr(&fifo->tail, tail, next);
+      continue;
+    } else if (ck_pr_cas_ptr(&fifo->head, head, next) == true)
+      break;
+  }
 
-	ck_pr_store_ptr(value, next->value);
-	return head;
+  ck_pr_store_ptr(value, next->value);
+  return head;
 }
 
 CK_CC_INLINE static struct ck_hp_fifo_entry *
-ck_hp_fifo_trydequeue_mpmc(ck_hp_record_t *record,
-			   struct ck_hp_fifo *fifo,
-			   void *value)
+ck_hp_fifo_trydequeue_mpmc(ck_hp_record_t *record, struct ck_hp_fifo *fifo, void *value)
 {
-	struct ck_hp_fifo_entry *head, *tail, *next;
+  struct ck_hp_fifo_entry *head, *tail, *next;
 
-	head = ck_pr_load_ptr(&fifo->head);
-	ck_pr_fence_load();
-	tail = ck_pr_load_ptr(&fifo->tail);
-	ck_hp_set(record, 0, head);
-	ck_pr_fence_store_load();
-	if (head != ck_pr_load_ptr(&fifo->head))
-		return NULL;
+  head = ck_pr_load_ptr(&fifo->head);
+  ck_pr_fence_load();
+  tail = ck_pr_load_ptr(&fifo->tail);
+  ck_hp_set(record, 0, head);
+  ck_pr_fence_store_load();
+  if (head != ck_pr_load_ptr(&fifo->head))
+    return NULL;
 
-	next = ck_pr_load_ptr(&head->next);
-	ck_hp_set(record, 1, next);
-	ck_pr_fence_store_load();
-	if (head != ck_pr_load_ptr(&fifo->head))
-		return NULL;
+  next = ck_pr_load_ptr(&head->next);
+  ck_hp_set(record, 1, next);
+  ck_pr_fence_store_load();
+  if (head != ck_pr_load_ptr(&fifo->head))
+    return NULL;
 
-	if (head == tail) {
-		if (next == NULL)
-			return NULL;
+  if (head == tail) {
+    if (next == NULL)
+      return NULL;
 
-		ck_pr_cas_ptr(&fifo->tail, tail, next);
-		return NULL;
-	} else if (ck_pr_cas_ptr(&fifo->head, head, next) == false)
-		return NULL;
+    ck_pr_cas_ptr(&fifo->tail, tail, next);
+    return NULL;
+  } else if (ck_pr_cas_ptr(&fifo->head, head, next) == false)
+    return NULL;
 
-	ck_pr_store_ptr(value, next->value);
-	return head;
+  ck_pr_store_ptr(value, next->value);
+  return head;
 }
 
 #define CK_HP_FIFO_ISEMPTY(f) ((f)->head->next == NULL)
-#define CK_HP_FIFO_FIRST(f)   ((f)->head->next)
-#define CK_HP_FIFO_NEXT(m)    ((m)->next)
-#define CK_HP_FIFO_FOREACH(fifo, entry)                       	\
-        for ((entry) = CK_HP_FIFO_FIRST(fifo);                	\
-             (entry) != NULL;                                   \
-             (entry) = CK_HP_FIFO_NEXT(entry))
-#define CK_HP_FIFO_FOREACH_SAFE(fifo, entry, T)			\
-        for ((entry) = CK_HP_FIFO_FIRST(fifo);			\
-             (entry) != NULL && ((T) = (entry)->next, 1);	\
-             (entry) = (T))
+#define CK_HP_FIFO_FIRST(f) ((f)->head->next)
+#define CK_HP_FIFO_NEXT(m) ((m)->next)
+#define CK_HP_FIFO_FOREACH(fifo, entry) for ((entry) = CK_HP_FIFO_FIRST(fifo); (entry) != NULL; (entry) = CK_HP_FIFO_NEXT(entry))
+#define CK_HP_FIFO_FOREACH_SAFE(fifo, entry, T) \
+  for ((entry) = CK_HP_FIFO_FIRST(fifo); (entry) != NULL && ((T) = (entry)->next, 1); (entry) = (T))
 
 #endif /* _CK_HP_FIFO_H */
-

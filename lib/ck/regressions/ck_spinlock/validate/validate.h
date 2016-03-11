@@ -46,7 +46,7 @@
 #endif
 
 struct block {
-	unsigned int tid;
+  unsigned int tid;
 };
 
 static struct affinity a;
@@ -59,123 +59,122 @@ static void *
 thread(void *null CK_CC_UNUSED)
 {
 #ifdef LOCK_STATE
-	LOCK_STATE;
+  LOCK_STATE;
 #endif
-	unsigned int i = ITERATE;
-	unsigned int j;
-	unsigned int core;
+  unsigned int i = ITERATE;
+  unsigned int j;
+  unsigned int core;
 
-        if (aff_iterate_core(&a, &core)) {
-                perror("ERROR: Could not affine thread");
-                exit(EXIT_FAILURE);
-        }
+  if (aff_iterate_core(&a, &core)) {
+    perror("ERROR: Could not affine thread");
+    exit(EXIT_FAILURE);
+  }
 
-	while (i--) {
+  while (i--) {
 #ifdef TRYLOCK
-		if (i & 1) {
-			LOCK;
-		} else {
-			while (TRYLOCK == false)
-				ck_pr_stall();
-		}
+    if (i & 1) {
+      LOCK;
+    } else {
+      while (TRYLOCK == false)
+        ck_pr_stall();
+    }
 #else
-		LOCK;
+    LOCK;
 #endif
 
 #ifdef LOCKED
-		if (LOCKED == false)
-			ck_error("is_locked operation failed.");
+    if (LOCKED == false)
+      ck_error("is_locked operation failed.");
 #endif
 
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
-		ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
+    ck_pr_inc_uint(&locked);
 
-		j = ck_pr_load_uint(&locked);
+    j = ck_pr_load_uint(&locked);
 
-		if (j != 10) {
-			ck_error("ERROR (WR): Race condition (%u)\n", j);
-			exit(EXIT_FAILURE);
-		}
+    if (j != 10) {
+      ck_error("ERROR (WR): Race condition (%u)\n", j);
+      exit(EXIT_FAILURE);
+    }
 
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
-		ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
+    ck_pr_dec_uint(&locked);
 
-		UNLOCK;
+    UNLOCK;
 
-		LOCK;
+    LOCK;
 
-		j = ck_pr_load_uint(&locked);
-		if (j != 0) {
-			ck_error("ERROR (RD): Race condition (%u)\n", j);
-			exit(EXIT_FAILURE);
-		}
+    j = ck_pr_load_uint(&locked);
+    if (j != 0) {
+      ck_error("ERROR (RD): Race condition (%u)\n", j);
+      exit(EXIT_FAILURE);
+    }
 
-		UNLOCK;
-	}
+    UNLOCK;
+  }
 
-	return (NULL);
+  return (NULL);
 }
 
 int
 main(int argc, char *argv[])
 {
-	uint64_t i;
-	pthread_t *threads;
+  uint64_t i;
+  pthread_t *threads;
 
-	if (argc != 3) {
-		ck_error("Usage: " LOCK_NAME " <number of threads> <affinity delta>\n");
-		exit(EXIT_FAILURE);
-	}
+  if (argc != 3) {
+    ck_error("Usage: " LOCK_NAME " <number of threads> <affinity delta>\n");
+    exit(EXIT_FAILURE);
+  }
 
-	nthr = atoi(argv[1]);
-	if (nthr <= 0) {
-		ck_error("ERROR: Number of threads must be greater than 0\n");
-		exit(EXIT_FAILURE);
-	}
+  nthr = atoi(argv[1]);
+  if (nthr <= 0) {
+    ck_error("ERROR: Number of threads must be greater than 0\n");
+    exit(EXIT_FAILURE);
+  }
 
 #ifdef LOCK_INIT
-	LOCK_INIT;
+  LOCK_INIT;
 #endif
 
-	threads = malloc(sizeof(pthread_t) * nthr);
-	if (threads == NULL) {
-		ck_error("ERROR: Could not allocate thread structures\n");
-		exit(EXIT_FAILURE);
-	}
+  threads = malloc(sizeof(pthread_t) * nthr);
+  if (threads == NULL) {
+    ck_error("ERROR: Could not allocate thread structures\n");
+    exit(EXIT_FAILURE);
+  }
 
-	a.delta = atoi(argv[2]);
-	a.request = 0;
+  a.delta = atoi(argv[2]);
+  a.request = 0;
 
-	fprintf(stderr, "Creating threads (mutual exclusion)...");
-	for (i = 0; i < nthr; i++) {
-		if (pthread_create(&threads[i], NULL, thread, NULL)) {
-			ck_error("ERROR: Could not create thread %" PRIu64 "\n", i);
-			exit(EXIT_FAILURE);
-		}
-	}
-	fprintf(stderr, "done\n");
+  fprintf(stderr, "Creating threads (mutual exclusion)...");
+  for (i = 0; i < nthr; i++) {
+    if (pthread_create(&threads[i], NULL, thread, NULL)) {
+      ck_error("ERROR: Could not create thread %" PRIu64 "\n", i);
+      exit(EXIT_FAILURE);
+    }
+  }
+  fprintf(stderr, "done\n");
 
-	fprintf(stderr, "Waiting for threads to finish correctness regression...");
-	for (i = 0; i < nthr; i++)
-		pthread_join(threads[i], NULL);
-	fprintf(stderr, "done (passed)\n");
+  fprintf(stderr, "Waiting for threads to finish correctness regression...");
+  for (i = 0; i < nthr; i++)
+    pthread_join(threads[i], NULL);
+  fprintf(stderr, "done (passed)\n");
 
-	return (0);
+  return (0);
 }
-

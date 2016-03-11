@@ -65,16 +65,12 @@
 CK_CC_INLINE static void
 ck_pr_stall(void)
 {
-	__asm__ __volatile__("pause" ::: "memory");
-	return;
+  __asm__ __volatile__("pause" ::: "memory");
+  return;
 }
 
-#define CK_PR_FENCE(T, I)				\
-	CK_CC_INLINE static void			\
-	ck_pr_fence_strict_##T(void)			\
-	{						\
-		__asm__ __volatile__(I ::: "memory");	\
-	}
+#define CK_PR_FENCE(T, I) \
+  CK_CC_INLINE static void ck_pr_fence_strict_##T(void) { __asm__ __volatile__(I::: "memory"); }
 
 CK_PR_FENCE(atomic, "sfence")
 CK_PR_FENCE(atomic_store, "sfence")
@@ -94,17 +90,12 @@ CK_PR_FENCE(acquire, "mfence")
 /*
  * Atomic fetch-and-store operations.
  */
-#define CK_PR_FAS(S, M, T, C, I)				\
-	CK_CC_INLINE static T					\
-	ck_pr_fas_##S(M *target, T v)				\
-	{							\
-		__asm__ __volatile__(I " %0, %1"		\
-					: "+m" (*(C *)target),	\
-					  "+q" (v)		\
-					:			\
-					: "memory");		\
-		return v;					\
-	}
+#define CK_PR_FAS(S, M, T, C, I)                                                  \
+  CK_CC_INLINE static T ck_pr_fas_##S(M *target, T v)                             \
+  {                                                                               \
+    __asm__ __volatile__(I " %0, %1" : "+m"(*(C *)target), "+q"(v) : : "memory"); \
+    return v;                                                                     \
+  }
 
 CK_PR_FAS(ptr, void, void *, char, "xchgq")
 
@@ -117,7 +108,7 @@ CK_PR_FAS_S(int, int, "xchgl")
 CK_PR_FAS_S(64, uint64_t, "xchgq")
 CK_PR_FAS_S(32, uint32_t, "xchgl")
 CK_PR_FAS_S(16, uint16_t, "xchgw")
-CK_PR_FAS_S(8,  uint8_t,  "xchgb")
+CK_PR_FAS_S(8, uint8_t, "xchgb")
 
 #undef CK_PR_FAS_S
 #undef CK_PR_FAS
@@ -125,17 +116,13 @@ CK_PR_FAS_S(8,  uint8_t,  "xchgb")
 /*
  * Atomic load-from-memory operations.
  */
-#define CK_PR_LOAD(S, M, T, C, I)				\
-	CK_CC_INLINE static T					\
-	ck_pr_load_##S(const M *target)				\
-	{							\
-		T r;						\
-		__asm__ __volatile__(I " %1, %0"		\
-					: "=q" (r)		\
-					: "m"  (*(C *)target)	\
-					: "memory");		\
-		return (r);					\
-	}
+#define CK_PR_LOAD(S, M, T, C, I)                                               \
+  CK_CC_INLINE static T ck_pr_load_##S(const M *target)                         \
+  {                                                                             \
+    T r;                                                                        \
+    __asm__ __volatile__(I " %1, %0" : "=q"(r) : "m"(*(C *)target) : "memory"); \
+    return (r);                                                                 \
+  }
 
 CK_PR_LOAD(ptr, void, void *, char, "movq")
 
@@ -148,7 +135,7 @@ CK_PR_LOAD_S(double, double, "movq")
 CK_PR_LOAD_S(64, uint64_t, "movq")
 CK_PR_LOAD_S(32, uint32_t, "movl")
 CK_PR_LOAD_S(16, uint16_t, "movw")
-CK_PR_LOAD_S(8,  uint8_t,  "movb")
+CK_PR_LOAD_S(8, uint8_t, "movb")
 
 #undef CK_PR_LOAD_S
 #undef CK_PR_LOAD
@@ -156,31 +143,27 @@ CK_PR_LOAD_S(8,  uint8_t,  "movb")
 CK_CC_INLINE static void
 ck_pr_load_64_2(const uint64_t target[2], uint64_t v[2])
 {
-	__asm__ __volatile__("movq %%rdx, %%rcx;"
-			     "movq %%rax, %%rbx;"
-			     CK_PR_LOCK_PREFIX "cmpxchg16b %2;"
-				: "=a" (v[0]),
-				  "=d" (v[1])
-				: "m" (*(const uint64_t *)target)
-				: "rbx", "rcx", "memory", "cc");
-	return;
+  __asm__ __volatile__("movq %%rdx, %%rcx;"
+                       "movq %%rax, %%rbx;" CK_PR_LOCK_PREFIX "cmpxchg16b %2;"
+                       : "=a"(v[0]), "=d"(v[1])
+                       : "m"(*(const uint64_t *)target)
+                       : "rbx", "rcx", "memory", "cc");
+  return;
 }
 
 CK_CC_INLINE static void
 ck_pr_load_ptr_2(void *t, void *v)
 {
-	ck_pr_load_64_2(t, v);
-	return;
+  ck_pr_load_64_2(t, v);
+  return;
 }
 
-#define CK_PR_LOAD_2(S, W, T)							\
-	CK_CC_INLINE static void						\
-	ck_pr_load_##S##_##W(const T t[2], T v[2])				\
-	{									\
-		ck_pr_load_64_2((const uint64_t *)(const void *)t,		\
-				(uint64_t *)(void *)v);				\
-		return;								\
-	}
+#define CK_PR_LOAD_2(S, W, T)                                                  \
+  CK_CC_INLINE static void ck_pr_load_##S##_##W(const T t[2], T v[2])          \
+  {                                                                            \
+    ck_pr_load_64_2((const uint64_t *)(const void *)t, (uint64_t *)(void *)v); \
+    return;                                                                    \
+  }
 
 CK_PR_LOAD_2(char, 16, char)
 CK_PR_LOAD_2(int, 4, int)
@@ -194,27 +177,19 @@ CK_PR_LOAD_2(8, 16, uint8_t)
 /*
  * Atomic store-to-memory operations.
  */
-#define CK_PR_STORE_IMM(S, M, T, C, I, K)				\
-	CK_CC_INLINE static void					\
-	ck_pr_store_##S(M *target, T v)					\
-	{								\
-		__asm__ __volatile__(I " %1, %0"			\
-					: "=m" (*(C *)target)		\
-					: K "q" (v)			\
-					: "memory");			\
-		return;							\
-	}
+#define CK_PR_STORE_IMM(S, M, T, C, I, K)                                         \
+  CK_CC_INLINE static void ck_pr_store_##S(M *target, T v)                        \
+  {                                                                               \
+    __asm__ __volatile__(I " %1, %0" : "=m"(*(C *)target) : K "q"(v) : "memory"); \
+    return;                                                                       \
+  }
 
-#define CK_PR_STORE(S, M, T, C, I)				\
-	CK_CC_INLINE static void				\
-	ck_pr_store_##S(M *target, T v)				\
-	{							\
-		__asm__ __volatile__(I " %1, %0"		\
-					: "=m" (*(C *)target)	\
-					: "q" (v)		\
-					: "memory");		\
-		return;						\
-	}
+#define CK_PR_STORE(S, M, T, C, I)                                              \
+  CK_CC_INLINE static void ck_pr_store_##S(M *target, T v)                      \
+  {                                                                             \
+    __asm__ __volatile__(I " %1, %0" : "=m"(*(C *)target) : "q"(v) : "memory"); \
+    return;                                                                     \
+  }
 
 CK_PR_STORE_IMM(ptr, void, const void *, char, "movq", CK_CC_IMM_U32)
 CK_PR_STORE(double, double, double, double, "movq")
@@ -227,7 +202,7 @@ CK_PR_STORE_S(uint, unsigned int, "movl", CK_CC_IMM_U32)
 CK_PR_STORE_S(64, uint64_t, "movq", CK_CC_IMM_U32)
 CK_PR_STORE_S(32, uint32_t, "movl", CK_CC_IMM_U32)
 CK_PR_STORE_S(16, uint16_t, "movw", CK_CC_IMM_U32)
-CK_PR_STORE_S(8,  uint8_t, "movb", CK_CC_IMM_U32)
+CK_PR_STORE_S(8, uint8_t, "movb", CK_CC_IMM_U32)
 
 #undef CK_PR_STORE_S
 #undef CK_PR_STORE_IMM
@@ -236,17 +211,12 @@ CK_PR_STORE_S(8,  uint8_t, "movb", CK_CC_IMM_U32)
 /*
  * Atomic fetch-and-add operations.
  */
-#define CK_PR_FAA(S, M, T, C, I)					\
-	CK_CC_INLINE static T						\
-	ck_pr_faa_##S(M *target, T d)					\
-	{								\
-		__asm__ __volatile__(CK_PR_LOCK_PREFIX I " %1, %0"	\
-					: "+m" (*(C *)target),		\
-					  "+q" (d)			\
-					:				\
-					: "memory", "cc");		\
-		return (d);						\
-	}
+#define CK_PR_FAA(S, M, T, C, I)                                                                          \
+  CK_CC_INLINE static T ck_pr_faa_##S(M *target, T d)                                                     \
+  {                                                                                                       \
+    __asm__ __volatile__(CK_PR_LOCK_PREFIX I " %1, %0" : "+m"(*(C *)target), "+q"(d) : : "memory", "cc"); \
+    return (d);                                                                                           \
+  }
 
 CK_PR_FAA(ptr, void, uintptr_t, char, "xaddq")
 
@@ -258,7 +228,7 @@ CK_PR_FAA_S(int, int, "xaddl")
 CK_PR_FAA_S(64, uint64_t, "xaddq")
 CK_PR_FAA_S(32, uint32_t, "xaddl")
 CK_PR_FAA_S(16, uint16_t, "xaddw")
-CK_PR_FAA_S(8,  uint8_t,  "xaddb")
+CK_PR_FAA_S(8, uint8_t, "xaddb")
 
 #undef CK_PR_FAA_S
 #undef CK_PR_FAA
@@ -266,45 +236,36 @@ CK_PR_FAA_S(8,  uint8_t,  "xaddb")
 /*
  * Atomic store-only unary operations.
  */
-#define CK_PR_UNARY(K, S, T, C, I)				\
-	CK_PR_UNARY_R(K, S, T, C, I)				\
-	CK_PR_UNARY_V(K, S, T, C, I)
+#define CK_PR_UNARY(K, S, T, C, I) \
+  CK_PR_UNARY_R(K, S, T, C, I)     \
+  CK_PR_UNARY_V(K, S, T, C, I)
 
-#define CK_PR_UNARY_R(K, S, T, C, I)				\
-	CK_CC_INLINE static void				\
-	ck_pr_##K##_##S(T *target)				\
-	{							\
-		__asm__ __volatile__(CK_PR_LOCK_PREFIX I " %0"	\
-					: "+m" (*(C *)target)	\
-					:			\
-					: "memory", "cc");	\
-		return;						\
-	}
+#define CK_PR_UNARY_R(K, S, T, C, I)                                                         \
+  CK_CC_INLINE static void ck_pr_##K##_##S(T *target)                                        \
+  {                                                                                          \
+    __asm__ __volatile__(CK_PR_LOCK_PREFIX I " %0" : "+m"(*(C *)target) : : "memory", "cc"); \
+    return;                                                                                  \
+  }
 
-#define CK_PR_UNARY_V(K, S, T, C, I)					\
-	CK_CC_INLINE static void					\
-	ck_pr_##K##_##S##_zero(T *target, bool *r)			\
-	{								\
-		__asm__ __volatile__(CK_PR_LOCK_PREFIX I " %0; setz %1"	\
-					: "+m" (*(C *)target),		\
-					  "=m" (*r)			\
-					:				\
-					: "memory", "cc");		\
-		return;							\
-	}
+#define CK_PR_UNARY_V(K, S, T, C, I)                                                                            \
+  CK_CC_INLINE static void ck_pr_##K##_##S##_zero(T *target, bool *r)                                           \
+  {                                                                                                             \
+    __asm__ __volatile__(CK_PR_LOCK_PREFIX I " %0; setz %1" : "+m"(*(C *)target), "=m"(*r) : : "memory", "cc"); \
+    return;                                                                                                     \
+  }
 
 
 #define CK_PR_UNARY_S(K, S, T, I) CK_PR_UNARY(K, S, T, T, I)
 
-#define CK_PR_GENERATE(K)				\
-	CK_PR_UNARY(K, ptr, void, char, #K "q") 	\
-	CK_PR_UNARY_S(K, char, char, #K "b")		\
-	CK_PR_UNARY_S(K, int, int, #K "l")		\
-	CK_PR_UNARY_S(K, uint, unsigned int, #K "l")	\
-	CK_PR_UNARY_S(K, 64, uint64_t, #K "q")		\
-	CK_PR_UNARY_S(K, 32, uint32_t, #K "l")		\
-	CK_PR_UNARY_S(K, 16, uint16_t, #K "w")		\
-	CK_PR_UNARY_S(K, 8, uint8_t, #K "b")
+#define CK_PR_GENERATE(K)                      \
+  CK_PR_UNARY(K, ptr, void, char, #K "q")      \
+  CK_PR_UNARY_S(K, char, char, #K "b")         \
+  CK_PR_UNARY_S(K, int, int, #K "l")           \
+  CK_PR_UNARY_S(K, uint, unsigned int, #K "l") \
+  CK_PR_UNARY_S(K, 64, uint64_t, #K "q")       \
+  CK_PR_UNARY_S(K, 32, uint32_t, #K "l")       \
+  CK_PR_UNARY_S(K, 16, uint16_t, #K "w")       \
+  CK_PR_UNARY_S(K, 8, uint8_t, #K "b")
 
 CK_PR_GENERATE(inc)
 CK_PR_GENERATE(dec)
@@ -324,34 +285,30 @@ CK_PR_GENERATE(not)
 /*
  * Atomic store-only binary operations.
  */
-#define CK_PR_BINARY(K, S, M, T, C, I, O)				\
-	CK_CC_INLINE static void					\
-	ck_pr_##K##_##S(M *target, T d)					\
-	{								\
-		__asm__ __volatile__(CK_PR_LOCK_PREFIX I " %1, %0"	\
-					: "+m" (*(C *)target)		\
-					: O "q" (d)			\
-					: "memory", "cc");		\
-		return;							\
-	}
+#define CK_PR_BINARY(K, S, M, T, C, I, O)                                                                 \
+  CK_CC_INLINE static void ck_pr_##K##_##S(M *target, T d)                                                \
+  {                                                                                                       \
+    __asm__ __volatile__(CK_PR_LOCK_PREFIX I " %1, %0" : "+m"(*(C *)target) : O "q"(d) : "memory", "cc"); \
+    return;                                                                                               \
+  }
 
 #define CK_PR_BINARY_S(K, S, T, I, O) CK_PR_BINARY(K, S, T, T, T, I, O)
 
-#define CK_PR_GENERATE(K)							\
-	CK_PR_BINARY(K, ptr, void, uintptr_t, char, #K "q", CK_CC_IMM_U32)	\
-	CK_PR_BINARY_S(K, char, char, #K "b", CK_CC_IMM_S32)			\
-	CK_PR_BINARY_S(K, int, int, #K "l", CK_CC_IMM_S32)			\
-	CK_PR_BINARY_S(K, uint, unsigned int, #K "l", CK_CC_IMM_U32)		\
-	CK_PR_BINARY_S(K, 64, uint64_t, #K "q", CK_CC_IMM_U32)			\
-	CK_PR_BINARY_S(K, 32, uint32_t, #K "l", CK_CC_IMM_U32)			\
-	CK_PR_BINARY_S(K, 16, uint16_t, #K "w", CK_CC_IMM_U32)			\
-	CK_PR_BINARY_S(K, 8, uint8_t, #K "b", CK_CC_IMM_U32)
+#define CK_PR_GENERATE(K)                                            \
+  CK_PR_BINARY(K, ptr, void, uintptr_t, char, #K "q", CK_CC_IMM_U32) \
+  CK_PR_BINARY_S(K, char, char, #K "b", CK_CC_IMM_S32)               \
+  CK_PR_BINARY_S(K, int, int, #K "l", CK_CC_IMM_S32)                 \
+  CK_PR_BINARY_S(K, uint, unsigned int, #K "l", CK_CC_IMM_U32)       \
+  CK_PR_BINARY_S(K, 64, uint64_t, #K "q", CK_CC_IMM_U32)             \
+  CK_PR_BINARY_S(K, 32, uint32_t, #K "l", CK_CC_IMM_U32)             \
+  CK_PR_BINARY_S(K, 16, uint16_t, #K "w", CK_CC_IMM_U32)             \
+  CK_PR_BINARY_S(K, 8, uint8_t, #K "b", CK_CC_IMM_U32)
 
 CK_PR_GENERATE(add)
 CK_PR_GENERATE(sub)
 CK_PR_GENERATE(and)
-CK_PR_GENERATE(or)
-CK_PR_GENERATE(xor)
+CK_PR_GENERATE(or )
+CK_PR_GENERATE (xor)
 
 #undef CK_PR_GENERATE
 #undef CK_PR_BINARY_S
@@ -360,19 +317,16 @@ CK_PR_GENERATE(xor)
 /*
  * Atomic compare and swap.
  */
-#define CK_PR_CAS(S, M, T, C, I)						\
-	CK_CC_INLINE static bool						\
-	ck_pr_cas_##S(M *target, T compare, T set)				\
-	{									\
-		bool z;								\
-		__asm__ __volatile__(CK_PR_LOCK_PREFIX I " %2, %0; setz %1"	\
-					: "+m"  (*(C *)target),			\
-					  "=a"  (z)				\
-					: "q"   (set),				\
-					  "a"   (compare)			\
-					: "memory", "cc");			\
-		return z;							\
-	}
+#define CK_PR_CAS(S, M, T, C, I)                                      \
+  CK_CC_INLINE static bool ck_pr_cas_##S(M *target, T compare, T set) \
+  {                                                                   \
+    bool z;                                                           \
+    __asm__ __volatile__(CK_PR_LOCK_PREFIX I " %2, %0; setz %1"       \
+                         : "+m"(*(C *)target), "=a"(z)                \
+                         : "q"(set), "a"(compare)                     \
+                         : "memory", "cc");                           \
+    return z;                                                         \
+  }
 
 CK_PR_CAS(ptr, void, void *, char, "cmpxchgq")
 
@@ -385,7 +339,7 @@ CK_PR_CAS_S(double, double, "cmpxchgq")
 CK_PR_CAS_S(64, uint64_t, "cmpxchgq")
 CK_PR_CAS_S(32, uint32_t, "cmpxchgl")
 CK_PR_CAS_S(16, uint16_t, "cmpxchgw")
-CK_PR_CAS_S(8,  uint8_t,  "cmpxchgb")
+CK_PR_CAS_S(8, uint8_t, "cmpxchgb")
 
 #undef CK_PR_CAS_S
 #undef CK_PR_CAS
@@ -393,27 +347,22 @@ CK_PR_CAS_S(8,  uint8_t,  "cmpxchgb")
 /*
  * Compare and swap, set *v to old value of target.
  */
-#define CK_PR_CAS_O(S, M, T, C, I, R)						\
-	CK_CC_INLINE static bool						\
-	ck_pr_cas_##S##_value(M *target, T compare, T set, M *v)		\
-	{									\
-		bool z;								\
-		__asm__ __volatile__(CK_PR_LOCK_PREFIX "cmpxchg" I " %3, %0;"	\
-				     "mov %% " R ", %2;"			\
-				     "setz %1;"					\
-					: "+m"  (*(C *)target),			\
-					  "=a"  (z),				\
-					  "=m"  (*(C *)v)			\
-					: "q"   (set),				\
-					  "a"   (compare)			\
-					: "memory", "cc");			\
-		return z;							\
-	}
+#define CK_PR_CAS_O(S, M, T, C, I, R)                                               \
+  CK_CC_INLINE static bool ck_pr_cas_##S##_value(M *target, T compare, T set, M *v) \
+  {                                                                                 \
+    bool z;                                                                         \
+    __asm__ __volatile__(CK_PR_LOCK_PREFIX "cmpxchg" I " %3, %0;"                   \
+                                           "mov %% " R ", %2;"                      \
+                                           "setz %1;"                               \
+                         : "+m"(*(C *)target), "=a"(z), "=m"(*(C *)v)               \
+                         : "q"(set), "a"(compare)                                   \
+                         : "memory", "cc");                                         \
+    return z;                                                                       \
+  }
 
 CK_PR_CAS_O(ptr, void, void *, char, "q", "rax")
 
-#define CK_PR_CAS_O_S(S, T, I, R)	\
-	CK_PR_CAS_O(S, T, T, T, I, R)
+#define CK_PR_CAS_O_S(S, T, I, R) CK_PR_CAS_O(S, T, T, T, I, R)
 
 CK_PR_CAS_O_S(char, char, "b", "al")
 CK_PR_CAS_O_S(int, int, "l", "eax")
@@ -422,7 +371,7 @@ CK_PR_CAS_O_S(double, double, "q", "rax")
 CK_PR_CAS_O_S(64, uint64_t, "q", "rax")
 CK_PR_CAS_O_S(32, uint32_t, "l", "eax")
 CK_PR_CAS_O_S(16, uint16_t, "w", "ax")
-CK_PR_CAS_O_S(8,  uint8_t,  "b", "al")
+CK_PR_CAS_O_S(8, uint8_t, "b", "al")
 
 #undef CK_PR_CAS_O_S
 #undef CK_PR_CAS_O
@@ -433,70 +382,50 @@ CK_PR_CAS_O_S(8,  uint8_t,  "b", "al")
 CK_CC_INLINE static bool
 ck_pr_cas_64_2(uint64_t target[2], uint64_t compare[2], uint64_t set[2])
 {
-	bool z;
+  bool z;
 
-	__asm__ __volatile__("movq 0(%4), %%rax;"
-			     "movq 8(%4), %%rdx;"
-			     CK_PR_LOCK_PREFIX "cmpxchg16b %0; setz %1"
-				: "+m" (*target),
-				  "=q" (z)
-				: "b"  (set[0]),
-				  "c"  (set[1]),
-				  "q"  (compare)
-				: "memory", "cc", "%rax", "%rdx");
-	return z;
+  __asm__ __volatile__("movq 0(%4), %%rax;"
+                       "movq 8(%4), %%rdx;" CK_PR_LOCK_PREFIX "cmpxchg16b %0; setz %1"
+                       : "+m"(*target), "=q"(z)
+                       : "b"(set[0]), "c"(set[1]), "q"(compare)
+                       : "memory", "cc", "%rax", "%rdx");
+  return z;
 }
 
 CK_CC_INLINE static bool
 ck_pr_cas_ptr_2(void *t, void *c, void *s)
 {
-	return ck_pr_cas_64_2(t, c, s);
+  return ck_pr_cas_64_2(t, c, s);
 }
 
 CK_CC_INLINE static bool
-ck_pr_cas_64_2_value(uint64_t target[2],
-		     uint64_t compare[2],
-		     uint64_t set[2],
-		     uint64_t v[2])
+ck_pr_cas_64_2_value(uint64_t target[2], uint64_t compare[2], uint64_t set[2], uint64_t v[2])
 {
-	bool z;
+  bool z;
 
-	__asm__ __volatile__(CK_PR_LOCK_PREFIX "cmpxchg16b %0;"
-			     "setz %3"
-				: "+m" (*target),
-				  "=a" (v[0]),
-				  "=d" (v[1]),
-				  "=q" (z)
-				: "a" (compare[0]),
-				  "d" (compare[1]),
-				  "b" (set[0]),
-				  "c" (set[1])
-				: "memory", "cc");
-	return z;
+  __asm__ __volatile__(CK_PR_LOCK_PREFIX "cmpxchg16b %0;"
+                                         "setz %3"
+                       : "+m"(*target), "=a"(v[0]), "=d"(v[1]), "=q"(z)
+                       : "a"(compare[0]), "d"(compare[1]), "b"(set[0]), "c"(set[1])
+                       : "memory", "cc");
+  return z;
 }
 
 CK_CC_INLINE static bool
 ck_pr_cas_ptr_2_value(void *t, void *c, void *s, void *v)
 {
-	return ck_pr_cas_64_2_value(t, c, s, v);
+  return ck_pr_cas_64_2_value(t, c, s, v);
 }
 
-#define CK_PR_CAS_V(S, W, T)					\
-CK_CC_INLINE static bool					\
-ck_pr_cas_##S##_##W(T t[W], T c[W], T s[W])			\
-{								\
-	return ck_pr_cas_64_2((uint64_t *)(void *)t,		\
-			      (uint64_t *)(void *)c,		\
-			      (uint64_t *)(void *)s);		\
-}								\
-CK_CC_INLINE static bool					\
-ck_pr_cas_##S##_##W##_value(T *t, T c[W], T s[W], T *v)		\
-{								\
-	return ck_pr_cas_64_2_value((uint64_t *)(void *)t,	\
-				    (uint64_t *)(void *)c,	\
-				    (uint64_t *)(void *)s,	\
-				    (uint64_t *)(void *)v);	\
-}
+#define CK_PR_CAS_V(S, W, T)                                                                                                 \
+  CK_CC_INLINE static bool ck_pr_cas_##S##_##W(T t[W], T c[W], T s[W])                                                       \
+  {                                                                                                                          \
+    return ck_pr_cas_64_2((uint64_t *)(void *)t, (uint64_t *)(void *)c, (uint64_t *)(void *)s);                              \
+  }                                                                                                                          \
+  CK_CC_INLINE static bool ck_pr_cas_##S##_##W##_value(T *t, T c[W], T s[W], T *v)                                           \
+  {                                                                                                                          \
+    return ck_pr_cas_64_2_value((uint64_t *)(void *)t, (uint64_t *)(void *)c, (uint64_t *)(void *)s, (uint64_t *)(void *)v); \
+  }
 
 CK_PR_CAS_V(double, 2, double)
 CK_PR_CAS_V(char, 16, char)
@@ -511,28 +440,23 @@ CK_PR_CAS_V(8, 16, uint8_t)
 /*
  * Atomic bit test operations.
  */
-#define CK_PR_BT(K, S, T, P, C, I)					\
-	CK_CC_INLINE static bool					\
-	ck_pr_##K##_##S(T *target, unsigned int b)			\
-	{								\
-		bool c;							\
-		__asm__ __volatile__(CK_PR_LOCK_PREFIX I "; setc %1"	\
-					: "+m" (*(C *)target),		\
-					  "=q" (c)			\
-					: "q"  ((P)b)			\
-					: "memory", "cc");		\
-		return c;						\
-	}
+#define CK_PR_BT(K, S, T, P, C, I)                                                                                    \
+  CK_CC_INLINE static bool ck_pr_##K##_##S(T *target, unsigned int b)                                                 \
+  {                                                                                                                   \
+    bool c;                                                                                                           \
+    __asm__ __volatile__(CK_PR_LOCK_PREFIX I "; setc %1" : "+m"(*(C *)target), "=q"(c) : "q"((P)b) : "memory", "cc"); \
+    return c;                                                                                                         \
+  }
 
 #define CK_PR_BT_S(K, S, T, I) CK_PR_BT(K, S, T, T, T, I)
 
-#define CK_PR_GENERATE(K)					\
-	CK_PR_BT(K, ptr, void, uint64_t, char, #K "q %2, %0")	\
-	CK_PR_BT_S(K, uint, unsigned int, #K "l %2, %0")	\
-	CK_PR_BT_S(K, int, int, #K "l %2, %0")			\
-	CK_PR_BT_S(K, 64, uint64_t, #K "q %2, %0")		\
-	CK_PR_BT_S(K, 32, uint32_t, #K "l %2, %0")		\
-	CK_PR_BT_S(K, 16, uint16_t, #K "w %w2, %0")
+#define CK_PR_GENERATE(K)                               \
+  CK_PR_BT(K, ptr, void, uint64_t, char, #K "q %2, %0") \
+  CK_PR_BT_S(K, uint, unsigned int, #K "l %2, %0")      \
+  CK_PR_BT_S(K, int, int, #K "l %2, %0")                \
+  CK_PR_BT_S(K, 64, uint64_t, #K "q %2, %0")            \
+  CK_PR_BT_S(K, 32, uint32_t, #K "l %2, %0")            \
+  CK_PR_BT_S(K, 16, uint16_t, #K "w %w2, %0")
 
 CK_PR_GENERATE(btc)
 CK_PR_GENERATE(bts)
@@ -542,4 +466,3 @@ CK_PR_GENERATE(btr)
 #undef CK_PR_BT
 
 #endif /* _CK_PR_X86_64_H */
-

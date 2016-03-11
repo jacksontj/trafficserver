@@ -49,14 +49,14 @@
 #endif
 
 struct block {
-	unsigned int tid;
+  unsigned int tid;
 };
 
 static struct affinity a;
 static unsigned int ready;
 
 struct counters {
-	uint64_t value;
+  uint64_t value;
 } CK_CC_CACHELINE;
 
 static struct counters *count;
@@ -70,13 +70,13 @@ LOCK_DEFINE;
 CK_CC_USED static void
 gen_lock(void)
 {
-	CK_CC_UNUSED int core = 0;
+  CK_CC_UNUSED int core = 0;
 #ifdef LOCK_STATE
-	LOCK_STATE;
+  LOCK_STATE;
 #endif
 
 #ifdef LOCK
-	LOCK;
+  LOCK;
 #endif
 }
 
@@ -84,11 +84,11 @@ CK_CC_USED static void
 gen_unlock(void)
 {
 #ifdef LOCK_STATE
-	LOCK_STATE;
+  LOCK_STATE;
 #endif
 
 #ifdef UNLOCK
-	UNLOCK;
+  UNLOCK;
 #endif
 }
 
@@ -96,123 +96,125 @@ static void *
 fairness(void *null)
 {
 #ifdef LOCK_STATE
-	LOCK_STATE;
+  LOCK_STATE;
 #endif
-	struct block *context = null;
-	unsigned int i = context->tid;
-	volatile int j;
-	long int base;
-	unsigned int core;
+  struct block *context = null;
+  unsigned int i = context->tid;
+  volatile int j;
+  long int base;
+  unsigned int core;
 
-        if (aff_iterate_core(&a, &core)) {
-                perror("ERROR: Could not affine thread");
-                exit(EXIT_FAILURE);
-        }
+  if (aff_iterate_core(&a, &core)) {
+    perror("ERROR: Could not affine thread");
+    exit(EXIT_FAILURE);
+  }
 
-	while (ck_pr_load_uint(&ready) == 0);
+  while (ck_pr_load_uint(&ready) == 0)
+    ;
 
-	ck_pr_inc_uint(&barrier);
-	while (ck_pr_load_uint(&barrier) != nthr);
+  ck_pr_inc_uint(&barrier);
+  while (ck_pr_load_uint(&barrier) != nthr)
+    ;
 
-	while (ready) {
-		LOCK;
+  while (ready) {
+    LOCK;
 
-		count[i].value++;
-		if (critical) {
-			base = common_lrand48() % critical;
-			for (j = 0; j < base; j++);
-		}
+    count[i].value++;
+    if (critical) {
+      base = common_lrand48() % critical;
+      for (j = 0; j < base; j++)
+        ;
+    }
 
-		UNLOCK;
-	}
+    UNLOCK;
+  }
 
-	return (NULL);
+  return (NULL);
 }
 
 int
 main(int argc, char *argv[])
 {
-	uint64_t v, d;
-	unsigned int i;
-	pthread_t *threads;
-	struct block *context;
+  uint64_t v, d;
+  unsigned int i;
+  pthread_t *threads;
+  struct block *context;
 
-	if (argc != 4) {
-		ck_error("Usage: " LOCK_NAME " <number of threads> <affinity delta> <critical section>\n");
-		exit(EXIT_FAILURE);
-	}
+  if (argc != 4) {
+    ck_error("Usage: " LOCK_NAME " <number of threads> <affinity delta> <critical section>\n");
+    exit(EXIT_FAILURE);
+  }
 
-	nthr = atoi(argv[1]);
-	if (nthr <= 0) {
-		ck_error("ERROR: Number of threads must be greater than 0\n");
-		exit(EXIT_FAILURE);
-	}
+  nthr = atoi(argv[1]);
+  if (nthr <= 0) {
+    ck_error("ERROR: Number of threads must be greater than 0\n");
+    exit(EXIT_FAILURE);
+  }
 
 #ifdef LOCK_INIT
-	LOCK_INIT;
+  LOCK_INIT;
 #endif
 
-	critical = atoi(argv[3]);
-	if (critical < 0) {
-		ck_error("ERROR: critical section cannot be negative\n");
-		exit(EXIT_FAILURE);
-	}
+  critical = atoi(argv[3]);
+  if (critical < 0) {
+    ck_error("ERROR: critical section cannot be negative\n");
+    exit(EXIT_FAILURE);
+  }
 
-	threads = malloc(sizeof(pthread_t) * nthr);
-	if (threads == NULL) {
-		ck_error("ERROR: Could not allocate thread structures\n");
-		exit(EXIT_FAILURE);
-	}
+  threads = malloc(sizeof(pthread_t) * nthr);
+  if (threads == NULL) {
+    ck_error("ERROR: Could not allocate thread structures\n");
+    exit(EXIT_FAILURE);
+  }
 
-	context = malloc(sizeof(struct block) * nthr);
-	if (context == NULL) {
-		ck_error("ERROR: Could not allocate thread contexts\n");
-		exit(EXIT_FAILURE);
-	}
+  context = malloc(sizeof(struct block) * nthr);
+  if (context == NULL) {
+    ck_error("ERROR: Could not allocate thread contexts\n");
+    exit(EXIT_FAILURE);
+  }
 
-	a.delta = atoi(argv[2]);
-	a.request = 0;
+  a.delta = atoi(argv[2]);
+  a.request = 0;
 
-	count = malloc(sizeof(*count) * nthr);
-	if (count == NULL) {
-		ck_error("ERROR: Could not create acquisition buffer\n");
-		exit(EXIT_FAILURE);
-	}
-	memset(count, 0, sizeof(*count) * nthr);
+  count = malloc(sizeof(*count) * nthr);
+  if (count == NULL) {
+    ck_error("ERROR: Could not create acquisition buffer\n");
+    exit(EXIT_FAILURE);
+  }
+  memset(count, 0, sizeof(*count) * nthr);
 
-	fprintf(stderr, "Creating threads (fairness)...");
-	for (i = 0; i < nthr; i++) {
-		context[i].tid = i;
-		if (pthread_create(&threads[i], NULL, fairness, context + i)) {
-			ck_error("ERROR: Could not create thread %d\n", i);
-			exit(EXIT_FAILURE);
-		}
-	}
-	fprintf(stderr, "done\n");
+  fprintf(stderr, "Creating threads (fairness)...");
+  for (i = 0; i < nthr; i++) {
+    context[i].tid = i;
+    if (pthread_create(&threads[i], NULL, fairness, context + i)) {
+      ck_error("ERROR: Could not create thread %d\n", i);
+      exit(EXIT_FAILURE);
+    }
+  }
+  fprintf(stderr, "done\n");
 
-	ck_pr_store_uint(&ready, 1);
-	common_sleep(10);
-	ck_pr_store_uint(&ready, 0);
+  ck_pr_store_uint(&ready, 1);
+  common_sleep(10);
+  ck_pr_store_uint(&ready, 0);
 
-	fprintf(stderr, "Waiting for threads to finish acquisition regression...");
-	for (i = 0; i < nthr; i++)
-		pthread_join(threads[i], NULL);
-	fprintf(stderr, "done\n\n");
+  fprintf(stderr, "Waiting for threads to finish acquisition regression...");
+  for (i = 0; i < nthr; i++)
+    pthread_join(threads[i], NULL);
+  fprintf(stderr, "done\n\n");
 
-	for (i = 0, v = 0; i < nthr; i++) {
-		printf("%d %15" PRIu64 "\n", i, count[i].value);
-		v += count[i].value;
-	}
+  for (i = 0, v = 0; i < nthr; i++) {
+    printf("%d %15" PRIu64 "\n", i, count[i].value);
+    v += count[i].value;
+  }
 
-	printf("\n# total       : %15" PRIu64 "\n", v);
-	printf("# throughput  : %15" PRIu64 " a/s\n", (v /= nthr) / 10);
+  printf("\n# total       : %15" PRIu64 "\n", v);
+  printf("# throughput  : %15" PRIu64 " a/s\n", (v /= nthr) / 10);
 
-	for (i = 0, d = 0; i < nthr; i++)
-		d += (count[i].value - v) * (count[i].value - v);
+  for (i = 0, d = 0; i < nthr; i++)
+    d += (count[i].value - v) * (count[i].value - v);
 
-	printf("# average     : %15" PRIu64 "\n", v);
-	printf("# deviation   : %.2f (%.2f%%)\n\n", sqrt(d / nthr), (sqrt(d / nthr) / v) * 100.00);
+  printf("# average     : %15" PRIu64 "\n", v);
+  printf("# deviation   : %.2f (%.2f%%)\n\n", sqrt(d / nthr), (sqrt(d / nthr) / v) * 100.00);
 
-	return (0);
+  return (0);
 }
-

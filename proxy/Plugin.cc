@@ -35,7 +35,7 @@
 
 static const char *plugin_dir = ".";
 
-typedef void (*init_func_t) (int argc, char *argv[]);
+typedef void (*init_func_t)(int argc, char *argv[]);
 
 // Plugin registration vars
 //
@@ -52,9 +52,10 @@ DLL<PluginRegInfo> plugin_reg_list;
 PluginRegInfo *plugin_reg_current = NULL;
 
 PluginRegInfo::PluginRegInfo()
-  : plugin_registered(false), plugin_path(NULL), sdk_version(PLUGIN_SDK_VERSION_UNKNOWN),
-    plugin_name(NULL), vendor_name(NULL), support_email(NULL)
-{ }
+  : plugin_registered(false), plugin_path(NULL), sdk_version(PLUGIN_SDK_VERSION_UNKNOWN), plugin_name(NULL), vendor_name(NULL),
+    support_email(NULL)
+{
+}
 
 static void
 plugin_load(int argc, char *argv[])
@@ -82,7 +83,6 @@ plugin_load(int argc, char *argv[])
   // elevate the access to read files as root if compiled with capabilities, if not
   // change the effective user to root
   {
-
 #if TS_USE_POSIX_CAP
     uint32_t elevate_access = 0;
     REC_ReadConfigInteger(elevate_access, "proxy.config.plugin.load_elevated");
@@ -100,7 +100,7 @@ plugin_load(int argc, char *argv[])
     plugin_reg_current = new PluginRegInfo;
     plugin_reg_current->plugin_path = ats_strdup(path);
 
-    init = (init_func_t) dlsym(handle, "TSPluginInit");
+    init = (init_func_t)dlsym(handle, "TSPluginInit");
     if (!init) {
       Fatal("unable to find TSPluginInit function in '%s': %s", path, dlerror());
       return; // this line won't get called since Fatal brings down ATS
@@ -120,7 +120,7 @@ plugin_expand(char *arg)
   char *str = NULL;
 
   if (*arg != '$') {
-    return (char *) NULL;
+    return (char *)NULL;
   }
   // skip the $ character
   arg += 1;
@@ -130,48 +130,44 @@ plugin_expand(char *arg)
   }
 
   switch (data_type) {
-  case RECD_STRING:
-    {
-      RecString str_val;
-      if (RecGetRecordString_Xmalloc(arg, &str_val) != REC_ERR_OKAY) {
-        goto not_found;
-      }
-      return (char *) str_val;
-      break;
+  case RECD_STRING: {
+    RecString str_val;
+    if (RecGetRecordString_Xmalloc(arg, &str_val) != REC_ERR_OKAY) {
+      goto not_found;
     }
-  case RECD_FLOAT:
-    {
-      RecFloat float_val;
-      if (RecGetRecordFloat(arg, &float_val) != REC_ERR_OKAY) {
-        goto not_found;
-      }
-      str = (char *)ats_malloc(128);
-      snprintf(str, 128, "%f", (float) float_val);
-      return str;
-      break;
+    return (char *)str_val;
+    break;
+  }
+  case RECD_FLOAT: {
+    RecFloat float_val;
+    if (RecGetRecordFloat(arg, &float_val) != REC_ERR_OKAY) {
+      goto not_found;
     }
-  case RECD_INT:
-    {
-      RecInt int_val;
-      if (RecGetRecordInt(arg, &int_val) != REC_ERR_OKAY) {
-        goto not_found;
-      }
-      str = (char *)ats_malloc(128);
-      snprintf(str, 128, "%ld", (long int) int_val);
-      return str;
-      break;
+    str = (char *)ats_malloc(128);
+    snprintf(str, 128, "%f", (float)float_val);
+    return str;
+    break;
+  }
+  case RECD_INT: {
+    RecInt int_val;
+    if (RecGetRecordInt(arg, &int_val) != REC_ERR_OKAY) {
+      goto not_found;
     }
-  case RECD_COUNTER:
-    {
-      RecCounter count_val;
-      if (RecGetRecordCounter(arg, &count_val) != REC_ERR_OKAY) {
-        goto not_found;
-      }
-      str = (char *)ats_malloc(128);
-      snprintf(str, 128, "%ld", (long int) count_val);
-      return str;
-      break;
+    str = (char *)ats_malloc(128);
+    snprintf(str, 128, "%ld", (long int)int_val);
+    return str;
+    break;
+  }
+  case RECD_COUNTER: {
+    RecCounter count_val;
+    if (RecGetRecordCounter(arg, &count_val) != REC_ERR_OKAY) {
+      goto not_found;
     }
+    str = (char *)ats_malloc(128);
+    snprintf(str, 128, "%ld", (long int)count_val);
+    return str;
+    break;
+  }
   default:
     goto not_found;
     break;
@@ -224,7 +220,7 @@ plugin_init(void)
       while (*p && ParseRules::is_wslfcr(*p))
         ++p;
       if ((*p == '\0') || (*p == '#'))
-        break;                  // EOL
+        break; // EOL
 
       if (*p == '\"') {
         p += 1;
@@ -266,4 +262,3 @@ plugin_init(void)
 
   close(fd);
 }
-

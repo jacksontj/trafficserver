@@ -67,7 +67,7 @@ LogUtils::timestamp_to_str(long timestamp, char *buf, int size)
   static const char *format_str = "%Y%m%d.%Hh%Mm%Ss";
   struct tm res;
   struct tm *tms;
-  tms = ink_localtime_r((const time_t *) &timestamp, &res);
+  tms = ink_localtime_r((const time_t *)&timestamp, &res);
   return strftime(buf, size, format_str, tms);
 }
 
@@ -85,7 +85,7 @@ LogUtils::timestamp_to_str(long timestamp, char *buf, int size)
 char *
 LogUtils::timestamp_to_netscape_str(long timestamp)
 {
-  static char timebuf[64];      // NOTE: not MT safe
+  static char timebuf[64]; // NOTE: not MT safe
   static char gmtstr[16];
   static long last_timestamp = 0;
   static char bad_time[] = "Bad timestamp";
@@ -100,20 +100,20 @@ LogUtils::timestamp_to_netscape_str(long timestamp)
   //
 
   if (timestamp != last_timestamp) {
-    //
-    // most of this garbage is simply to find out the offset from GMT,
-    // taking daylight savings into account.
-    //
+//
+// most of this garbage is simply to find out the offset from GMT,
+// taking daylight savings into account.
+//
 #ifdef NEED_ALTZONE_DEFINED
     time_t altzone = timezone;
 #endif
     struct tm res;
-    struct tm *tms = ink_localtime_r((const time_t *) &timestamp, &res);
-    // TODO: Not sure this makes sense, can altzone actually be != timezone ??
+    struct tm *tms = ink_localtime_r((const time_t *)&timestamp, &res);
+// TODO: Not sure this makes sense, can altzone actually be != timezone ??
 #ifdef NEED_ALTZONE_DEFINED
     long zone = (tms->tm_isdst > 0) ? altzone : timezone;
 #else
-    long zone = -tms->tm_gmtoff;        // double negative!
+    long zone = -tms->tm_gmtoff; // double negative!
 #endif
     int offset;
     char sign;
@@ -144,7 +144,7 @@ LogUtils::timestamp_to_netscape_str(long timestamp)
 char *
 LogUtils::timestamp_to_date_str(long timestamp)
 {
-  static char timebuf[64];      // NOTE: not MT safe
+  static char timebuf[64]; // NOTE: not MT safe
   static long last_timestamp = 0;
   static char bad_time[] = "Bad timestamp";
 
@@ -159,7 +159,7 @@ LogUtils::timestamp_to_date_str(long timestamp)
 
   if (timestamp != last_timestamp) {
     struct tm res;
-    struct tm *tms = ink_localtime_r((const time_t *) &timestamp, &res);
+    struct tm *tms = ink_localtime_r((const time_t *)&timestamp, &res);
     strftime(timebuf, 64, "%Y-%m-%d", tms);
     last_timestamp = timestamp;
   }
@@ -176,7 +176,7 @@ LogUtils::timestamp_to_date_str(long timestamp)
 char *
 LogUtils::timestamp_to_time_str(long timestamp)
 {
-  static char timebuf[64];      // NOTE: not MT safe
+  static char timebuf[64]; // NOTE: not MT safe
   static long last_timestamp = 0;
   static char bad_time[] = "Bad timestamp";
 
@@ -191,7 +191,7 @@ LogUtils::timestamp_to_time_str(long timestamp)
 
   if (timestamp != last_timestamp) {
     struct tm res;
-    struct tm *tms = ink_localtime_r((const time_t *) &timestamp, &res);
+    struct tm *tms = ink_localtime_r((const time_t *)&timestamp, &res);
     strftime(timebuf, 64, "%H:%M:%S", tms);
     last_timestamp = timestamp;
   }
@@ -251,7 +251,7 @@ void
 LogUtils::strip_trailing_newline(char *buf)
 {
   if (buf != NULL) {
-    int len =::strlen(buf);
+    int len = ::strlen(buf);
     if (len > 0) {
       if (buf[len - 1] == '\n') {
         buf[len - 1] = '\0';
@@ -280,24 +280,26 @@ LogUtils::escapify_url(Arena *arena, char *url, size_t len_in, int *len_out, cha
   // Note that we leave codes beyond 127 unmodified.
   //
   static const unsigned char codes_to_escape[32] = {
-    0xFF, 0xFF, 0xFF, 0xFF,     // control
-    0xB4,                       // space " # %
-    0x00, 0x00,                 //
-    0x0A,                       // < >
-    0x00, 0x00, 0x00,           //
-    0x1E, 0x80,                 // [ \ ] ^ `
-    0x00, 0x00,                 //
-    0x1F,                       // { | } ~ DEL
-    0x00, 0x00, 0x00, 0x00,     // all non-ascii characters unmodified
-    0x00, 0x00, 0x00, 0x00,     //               .
-    0x00, 0x00, 0x00, 0x00,     //               .
-    0x00, 0x00, 0x00, 0x00      //               .
+    0xFF, 0xFF, 0xFF,
+    0xFF,             // control
+    0xB4,             // space " # %
+    0x00, 0x00,       //
+    0x0A,             // < >
+    0x00, 0x00, 0x00, //
+    0x1E, 0x80,       // [ \ ] ^ `
+    0x00, 0x00,       //
+    0x1F,             // { | } ~ DEL
+    0x00, 0x00, 0x00,
+    0x00, // all non-ascii characters unmodified
+    0x00, 0x00, 0x00,
+    0x00, //               .
+    0x00, 0x00, 0x00,
+    0x00, //               .
+    0x00, 0x00, 0x00,
+    0x00 //               .
   };
 
-  static char hex_digit[16] = {
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',
-    'D', 'E', 'F'
-  };
+  static char hex_digit[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   if (!url || (dst && dst_size < len_in)) {
     *len_out = 0;
@@ -353,7 +355,7 @@ LogUtils::escapify_url(Arena *arena, char *url, size_t len_in, int *len_out, cha
   if (dst)
     new_url = dst;
   else
-    new_url = (char *) arena->str_alloc(out_len + 1);
+    new_url = (char *)arena->str_alloc(out_len + 1);
 
   char *from = url;
   char *to = new_url;
@@ -369,7 +371,7 @@ LogUtils::escapify_url(Arena *arena, char *url, size_t len_in, int *len_out, cha
     }
     from++;
   }
-  *to = '\0';                      // null terminate string
+  *to = '\0'; // null terminate string
 
   *len_out = out_len;
   return new_url;
@@ -393,7 +395,7 @@ LogUtils::remove_content_type_attributes(char *type_str, int *type_len)
   }
   // Look for a semicolon and cut out everything after that
   //
-  char *p = (char *) memchr(type_str, ';', *type_len);
+  char *p = (char *)memchr(type_str, ';', *type_len);
   if (p) {
     *type_len = p - type_str;
   }
@@ -414,7 +416,7 @@ LogUtils::remove_content_type_attributes(char *type_str, int *type_len)
   -------------------------------------------------------------------------*/
 
 int
-LogUtils::timestamp_to_hex_str(unsigned ip, char *buf, size_t bufLen, size_t * numCharsPtr)
+LogUtils::timestamp_to_hex_str(unsigned ip, char *buf, size_t bufLen, size_t *numCharsPtr)
 {
   static const char *table = "0123456789abcdef@";
   int retVal = 1;
@@ -422,13 +424,13 @@ LogUtils::timestamp_to_hex_str(unsigned ip, char *buf, size_t bufLen, size_t * n
   if (buf && bufLen > 0) {
     if (bufLen > 8)
       bufLen = 8;
-    for (retVal = 0; retVal < (int) bufLen;) {
-      buf[retVal++] = (char) table[((ip >> shift) & 0xf)];
+    for (retVal = 0; retVal < (int)bufLen;) {
+      buf[retVal++] = (char)table[((ip >> shift) & 0xf)];
       shift -= 4;
     }
 
     if (numCharsPtr) {
-      *numCharsPtr = (size_t) retVal;
+      *numCharsPtr = (size_t)retVal;
     }
     retVal = (retVal == 8) ? 0 : 1;
   }
@@ -440,10 +442,10 @@ int
 LogUtils::ip_to_str (unsigned ip, char *str, unsigned len)
 {
     int ret = snprintf (str, len, "%u.%u.%u.%u",
-			    (ip >> 24) & 0xff,
-			    (ip >> 16) & 0xff,
-			    (ip >> 8)  & 0xff,
-			    ip         & 0xff);
+                            (ip >> 24) & 0xff,
+                            (ip >> 16) & 0xff,
+                            (ip >> 8)  & 0xff,
+                            ip         & 0xff);
 
     return ((ret <= (int)len)? ret : (int)len);
 }
@@ -456,7 +458,7 @@ int
 LogUtils::seconds_to_next_roll(time_t time_now, int rolling_offset, int rolling_interval)
 {
   struct tm lt;
-  ink_localtime_r((const time_t *) &time_now, &lt);
+  ink_localtime_r((const time_t *)&time_now, &lt);
   int sidl = lt.tm_sec + lt.tm_min * 60 + lt.tm_hour * 3600;
   int tr = rolling_offset * 3600;
   return ((tr >= sidl ? (tr - sidl) % rolling_interval : (86400 - (sidl - tr)) % rolling_interval));
@@ -483,8 +485,7 @@ LogUtils::seconds_to_next_roll(time_t time_now, int rolling_offset, int rolling_
 //    nor a pipe
 //
 int
-LogUtils::file_is_writeable(const char *full_filename,
-                            off_t * size_bytes, bool * has_size_limit, uint64_t * current_size_limit_bytes)
+LogUtils::file_is_writeable(const char *full_filename, off_t *size_bytes, bool *has_size_limit, uint64_t *current_size_limit_bytes)
 {
   int ret_val = 0;
   int e;
@@ -528,7 +529,7 @@ LogUtils::file_is_writeable(const char *full_filename,
         prefix[prefix_len] = 0;
         dir = prefix;
       } else {
-        dir = (char *) ".";     // full_filename has no prefix, use .
+        dir = (char *)"."; // full_filename has no prefix, use .
       }
 
       // check if directory is executable and writeable
@@ -542,7 +543,7 @@ LogUtils::file_is_writeable(const char *full_filename,
       }
 
       if (prefix) {
-        delete[]prefix;
+        delete[] prefix;
       }
     }
   }

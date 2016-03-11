@@ -54,20 +54,18 @@
 #include "gcc/ck_pr.h"
 #endif
 
-#define CK_PR_FENCE_EMIT(T)			\
-	CK_CC_INLINE static void		\
-	ck_pr_fence_##T(void)			\
-	{					\
-		ck_pr_fence_strict_##T();	\
-		return;				\
-	}
-#define CK_PR_FENCE_NOOP(T)			\
-	CK_CC_INLINE static void		\
-	ck_pr_fence_##T(void)			\
-	{					\
-		ck_pr_barrier();		\
-		return;				\
-	}
+#define CK_PR_FENCE_EMIT(T)                      \
+  CK_CC_INLINE static void ck_pr_fence_##T(void) \
+  {                                              \
+    ck_pr_fence_strict_##T();                    \
+    return;                                      \
+  }
+#define CK_PR_FENCE_NOOP(T)                      \
+  CK_CC_INLINE static void ck_pr_fence_##T(void) \
+  {                                              \
+    ck_pr_barrier();                             \
+    return;                                      \
+  }
 
 /*
  * None of the currently supported platforms allow for data-dependent
@@ -138,22 +136,18 @@ CK_PR_FENCE_NOOP(release)
 #undef CK_PR_FENCE_EMIT
 #undef CK_PR_FENCE_NOOP
 
-#define CK_PR_BIN(K, S, M, T, P, C)					\
-	CK_CC_INLINE static void					\
-	ck_pr_##K##_##S(M *target, T value)				\
-	{								\
-		T previous;						\
-		C punt;							\
-		punt = ck_pr_load_##S(target);				\
-		previous = (T)punt;					\
-		while (ck_pr_cas_##S##_value(target,			\
-					     (C)previous,		\
-					     (C)(previous P value),	\
-					     &previous) == false)	\
-			ck_pr_stall();					\
-									\
-		return;							\
-	}
+#define CK_PR_BIN(K, S, M, T, P, C)                                                               \
+  CK_CC_INLINE static void ck_pr_##K##_##S(M *target, T value)                                    \
+  {                                                                                               \
+    T previous;                                                                                   \
+    C punt;                                                                                       \
+    punt = ck_pr_load_##S(target);                                                                \
+    previous = (T)punt;                                                                           \
+    while (ck_pr_cas_##S##_value(target, (C)previous, (C)(previous P value), &previous) == false) \
+      ck_pr_stall();                                                                              \
+                                                                                                  \
+    return;                                                                                       \
+  }
 
 #define CK_PR_BIN_S(K, S, T, P) CK_PR_BIN(K, S, T, T, P, T)
 
@@ -176,12 +170,12 @@ CK_PR_BIN_S(and, char, char, &)
 
 #ifndef CK_F_PR_XOR_CHAR
 #define CK_F_PR_XOR_CHAR
-CK_PR_BIN_S(xor, char, char, ^)
+CK_PR_BIN_S (xor, char, char, ^)
 #endif /* CK_F_PR_XOR_CHAR */
 
 #ifndef CK_F_PR_OR_CHAR
 #define CK_F_PR_OR_CHAR
-CK_PR_BIN_S(or, char, char, |)
+CK_PR_BIN_S(or, char, char, | )
 #endif /* CK_F_PR_OR_CHAR */
 
 #endif /* CK_F_PR_LOAD_CHAR && CK_F_PR_CAS_CHAR_VALUE */
@@ -205,12 +199,12 @@ CK_PR_BIN_S(and, int, int, &)
 
 #ifndef CK_F_PR_XOR_INT
 #define CK_F_PR_XOR_INT
-CK_PR_BIN_S(xor, int, int, ^)
+CK_PR_BIN_S (xor, int, int, ^)
 #endif /* CK_F_PR_XOR_INT */
 
 #ifndef CK_F_PR_OR_INT
 #define CK_F_PR_OR_INT
-CK_PR_BIN_S(or, int, int, |)
+CK_PR_BIN_S(or, int, int, | )
 #endif /* CK_F_PR_OR_INT */
 
 #endif /* CK_F_PR_LOAD_INT && CK_F_PR_CAS_INT_VALUE */
@@ -248,12 +242,12 @@ CK_PR_BIN_S(and, uint, unsigned int, &)
 
 #ifndef CK_F_PR_XOR_UINT
 #define CK_F_PR_XOR_UINT
-CK_PR_BIN_S(xor, uint, unsigned int, ^)
+CK_PR_BIN_S (xor, uint, unsigned int, ^)
 #endif /* CK_F_PR_XOR_UINT */
 
 #ifndef CK_F_PR_OR_UINT
 #define CK_F_PR_OR_UINT
-CK_PR_BIN_S(or, uint, unsigned int, |)
+CK_PR_BIN_S(or, uint, unsigned int, | )
 #endif /* CK_F_PR_OR_UINT */
 
 #endif /* CK_F_PR_LOAD_UINT && CK_F_PR_CAS_UINT_VALUE */
@@ -277,7 +271,7 @@ CK_PR_BIN(and, ptr, void, uintptr_t, &, void *)
 
 #ifndef CK_F_PR_XOR_PTR
 #define CK_F_PR_XOR_PTR
-CK_PR_BIN(xor, ptr, void, uintptr_t, ^, void *)
+CK_PR_BIN (xor, ptr, void, uintptr_t, ^, void *)
 #endif /* CK_F_PR_XOR_PTR */
 
 #ifndef CK_F_PR_OR_PTR
@@ -306,12 +300,12 @@ CK_PR_BIN_S(and, 64, uint64_t, &)
 
 #ifndef CK_F_PR_XOR_64
 #define CK_F_PR_XOR_64
-CK_PR_BIN_S(xor, 64, uint64_t, ^)
+CK_PR_BIN_S (xor, 64, uint64_t, ^)
 #endif /* CK_F_PR_XOR_64 */
 
 #ifndef CK_F_PR_OR_64
 #define CK_F_PR_OR_64
-CK_PR_BIN_S(or, 64, uint64_t, |)
+CK_PR_BIN_S(or, 64, uint64_t, | )
 #endif /* CK_F_PR_OR_64 */
 
 #endif /* CK_F_PR_LOAD_64 && CK_F_PR_CAS_64_VALUE */
@@ -335,12 +329,12 @@ CK_PR_BIN_S(and, 32, uint32_t, &)
 
 #ifndef CK_F_PR_XOR_32
 #define CK_F_PR_XOR_32
-CK_PR_BIN_S(xor, 32, uint32_t, ^)
+CK_PR_BIN_S (xor, 32, uint32_t, ^)
 #endif /* CK_F_PR_XOR_32 */
 
 #ifndef CK_F_PR_OR_32
 #define CK_F_PR_OR_32
-CK_PR_BIN_S(or, 32, uint32_t, |)
+CK_PR_BIN_S(or, 32, uint32_t, | )
 #endif /* CK_F_PR_OR_32 */
 
 #endif /* CK_F_PR_LOAD_32 && CK_F_PR_CAS_32_VALUE */
@@ -364,12 +358,12 @@ CK_PR_BIN_S(and, 16, uint16_t, &)
 
 #ifndef CK_F_PR_XOR_16
 #define CK_F_PR_XOR_16
-CK_PR_BIN_S(xor, 16, uint16_t, ^)
+CK_PR_BIN_S (xor, 16, uint16_t, ^)
 #endif /* CK_F_PR_XOR_16 */
 
 #ifndef CK_F_PR_OR_16
 #define CK_F_PR_OR_16
-CK_PR_BIN_S(or, 16, uint16_t, |)
+CK_PR_BIN_S(or, 16, uint16_t, | )
 #endif /* CK_F_PR_OR_16 */
 
 #endif /* CK_F_PR_LOAD_16 && CK_F_PR_CAS_16_VALUE */
@@ -393,12 +387,12 @@ CK_PR_BIN_S(and, 8, uint8_t, &)
 
 #ifndef CK_F_PR_XOR_8
 #define CK_F_PR_XOR_8
-CK_PR_BIN_S(xor, 8, uint8_t, ^)
+CK_PR_BIN_S (xor, 8, uint8_t, ^)
 #endif /* CK_F_PR_XOR_8 */
 
 #ifndef CK_F_PR_OR_8
 #define CK_F_PR_OR_8
-CK_PR_BIN_S(or, 8, uint8_t, |)
+CK_PR_BIN_S(or, 8, uint8_t, | )
 #endif /* CK_F_PR_OR_8 */
 
 #endif /* CK_F_PR_LOAD_8 && CK_F_PR_CAS_8_VALUE */
@@ -406,19 +400,17 @@ CK_PR_BIN_S(or, 8, uint8_t, |)
 #undef CK_PR_BIN_S
 #undef CK_PR_BIN
 
-#define CK_PR_BTX(K, S, M, T, P, C, R)						   \
-	CK_CC_INLINE static bool						   \
-	ck_pr_##K##_##S(M *target, unsigned int offset)				   \
-	{									   \
-		T previous;							   \
-		C punt;								   \
-		punt = ck_pr_load_##S(target);					   \
-		previous = (T)punt;						   \
-		while (ck_pr_cas_##S##_value(target, (C)previous,		   \
-			(C)(previous P (R ((T)1 << offset))), &previous) == false) \
-				ck_pr_stall();					   \
-		return ((previous >> offset) & 1);				   \
-	}
+#define CK_PR_BTX(K, S, M, T, P, C, R)                                                                         \
+  CK_CC_INLINE static bool ck_pr_##K##_##S(M *target, unsigned int offset)                                     \
+  {                                                                                                            \
+    T previous;                                                                                                \
+    C punt;                                                                                                    \
+    punt = ck_pr_load_##S(target);                                                                             \
+    previous = (T)punt;                                                                                        \
+    while (ck_pr_cas_##S##_value(target, (C)previous, (C)(previous P(R((T)1 << offset))), &previous) == false) \
+      ck_pr_stall();                                                                                           \
+    return ((previous >> offset) & 1);                                                                         \
+  }
 
 #define CK_PR_BTX_S(K, S, T, P, R) CK_PR_BTX(K, S, T, T, P, T, R)
 
@@ -426,7 +418,7 @@ CK_PR_BIN_S(or, 8, uint8_t, |)
 
 #ifndef CK_F_PR_BTC_INT
 #define CK_F_PR_BTC_INT
-CK_PR_BTX_S(btc, int, int, ^,)
+CK_PR_BTX_S(btc, int, int, ^, )
 #endif /* CK_F_PR_BTC_INT */
 
 #ifndef CK_F_PR_BTR_INT
@@ -436,7 +428,7 @@ CK_PR_BTX_S(btr, int, int, &, ~)
 
 #ifndef CK_F_PR_BTS_INT
 #define CK_F_PR_BTS_INT
-CK_PR_BTX_S(bts, int, int, |,)
+CK_PR_BTX_S(bts, int, int, |, )
 #endif /* CK_F_PR_BTS_INT */
 
 #endif /* CK_F_PR_LOAD_INT && CK_F_PR_CAS_INT_VALUE */
@@ -445,7 +437,7 @@ CK_PR_BTX_S(bts, int, int, |,)
 
 #ifndef CK_F_PR_BTC_UINT
 #define CK_F_PR_BTC_UINT
-CK_PR_BTX_S(btc, uint, unsigned int, ^,)
+CK_PR_BTX_S(btc, uint, unsigned int, ^, )
 #endif /* CK_F_PR_BTC_UINT */
 
 #ifndef CK_F_PR_BTR_UINT
@@ -455,7 +447,7 @@ CK_PR_BTX_S(btr, uint, unsigned int, &, ~)
 
 #ifndef CK_F_PR_BTS_UINT
 #define CK_F_PR_BTS_UINT
-CK_PR_BTX_S(bts, uint, unsigned int, |,)
+CK_PR_BTX_S(bts, uint, unsigned int, |, )
 #endif /* CK_F_PR_BTS_UINT */
 
 #endif /* CK_F_PR_LOAD_UINT && CK_F_PR_CAS_UINT_VALUE */
@@ -464,7 +456,7 @@ CK_PR_BTX_S(bts, uint, unsigned int, |,)
 
 #ifndef CK_F_PR_BTC_PTR
 #define CK_F_PR_BTC_PTR
-CK_PR_BTX(btc, ptr, void, uintptr_t, ^, void *,)
+CK_PR_BTX(btc, ptr, void, uintptr_t, ^, void *, )
 #endif /* CK_F_PR_BTC_PTR */
 
 #ifndef CK_F_PR_BTR_PTR
@@ -474,7 +466,7 @@ CK_PR_BTX(btr, ptr, void, uintptr_t, &, void *, ~)
 
 #ifndef CK_F_PR_BTS_PTR
 #define CK_F_PR_BTS_PTR
-CK_PR_BTX(bts, ptr, void, uintptr_t, |, void *,)
+CK_PR_BTX(bts, ptr, void, uintptr_t, |, void *, )
 #endif /* CK_F_PR_BTS_PTR */
 
 #endif /* CK_F_PR_LOAD_PTR && CK_F_PR_CAS_PTR_VALUE */
@@ -483,7 +475,7 @@ CK_PR_BTX(bts, ptr, void, uintptr_t, |, void *,)
 
 #ifndef CK_F_PR_BTC_64
 #define CK_F_PR_BTC_64
-CK_PR_BTX_S(btc, 64, uint64_t, ^,)
+CK_PR_BTX_S(btc, 64, uint64_t, ^, )
 #endif /* CK_F_PR_BTC_64 */
 
 #ifndef CK_F_PR_BTR_64
@@ -493,7 +485,7 @@ CK_PR_BTX_S(btr, 64, uint64_t, &, ~)
 
 #ifndef CK_F_PR_BTS_64
 #define CK_F_PR_BTS_64
-CK_PR_BTX_S(bts, 64, uint64_t, |,)
+CK_PR_BTX_S(bts, 64, uint64_t, |, )
 #endif /* CK_F_PR_BTS_64 */
 
 #endif /* CK_F_PR_LOAD_64 && CK_F_PR_CAS_64_VALUE */
@@ -502,7 +494,7 @@ CK_PR_BTX_S(bts, 64, uint64_t, |,)
 
 #ifndef CK_F_PR_BTC_32
 #define CK_F_PR_BTC_32
-CK_PR_BTX_S(btc, 32, uint32_t, ^,)
+CK_PR_BTX_S(btc, 32, uint32_t, ^, )
 #endif /* CK_F_PR_BTC_32 */
 
 #ifndef CK_F_PR_BTR_32
@@ -512,7 +504,7 @@ CK_PR_BTX_S(btr, 32, uint32_t, &, ~)
 
 #ifndef CK_F_PR_BTS_32
 #define CK_F_PR_BTS_32
-CK_PR_BTX_S(bts, 32, uint32_t, |,)
+CK_PR_BTX_S(bts, 32, uint32_t, |, )
 #endif /* CK_F_PR_BTS_32 */
 
 #endif /* CK_F_PR_LOAD_32 && CK_F_PR_CAS_32_VALUE */
@@ -521,7 +513,7 @@ CK_PR_BTX_S(bts, 32, uint32_t, |,)
 
 #ifndef CK_F_PR_BTC_16
 #define CK_F_PR_BTC_16
-CK_PR_BTX_S(btc, 16, uint16_t, ^,)
+CK_PR_BTX_S(btc, 16, uint16_t, ^, )
 #endif /* CK_F_PR_BTC_16 */
 
 #ifndef CK_F_PR_BTR_16
@@ -531,7 +523,7 @@ CK_PR_BTX_S(btr, 16, uint16_t, &, ~)
 
 #ifndef CK_F_PR_BTS_16
 #define CK_F_PR_BTS_16
-CK_PR_BTX_S(bts, 16, uint16_t, |,)
+CK_PR_BTX_S(bts, 16, uint16_t, |, )
 #endif /* CK_F_PR_BTS_16 */
 
 #endif /* CK_F_PR_LOAD_16 && CK_F_PR_CAS_16_VALUE */
@@ -539,30 +531,25 @@ CK_PR_BTX_S(bts, 16, uint16_t, |,)
 #undef CK_PR_BTX_S
 #undef CK_PR_BTX
 
-#define CK_PR_UNARY(K, X, S, M, T)					\
-	CK_CC_INLINE static void					\
-	ck_pr_##K##_##S(M *target)					\
-	{								\
-		ck_pr_##X##_##S(target, (T)1);				\
-		return;							\
-	}
+#define CK_PR_UNARY(K, X, S, M, T)                    \
+  CK_CC_INLINE static void ck_pr_##K##_##S(M *target) \
+  {                                                   \
+    ck_pr_##X##_##S(target, (T)1);                    \
+    return;                                           \
+  }
 
-#define CK_PR_UNARY_Z(K, S, M, T, P, C, Z)				\
-	CK_CC_INLINE static void					\
-	ck_pr_##K##_##S##_zero(M *target, bool *zero)			\
-	{								\
-		T previous;						\
-		C punt;							\
-		punt = (C)ck_pr_load_##S(target);			\
-		previous = (T)punt;					\
-		while (ck_pr_cas_##S##_value(target,			\
-					     (C)previous,		\
-					     (C)(previous P 1),		\
-					     &previous) == false)	\
-			ck_pr_stall();					\
-		*zero = previous == (T)Z;				\
-		return;							\
-	}
+#define CK_PR_UNARY_Z(K, S, M, T, P, C, Z)                                                    \
+  CK_CC_INLINE static void ck_pr_##K##_##S##_zero(M *target, bool *zero)                      \
+  {                                                                                           \
+    T previous;                                                                               \
+    C punt;                                                                                   \
+    punt = (C)ck_pr_load_##S(target);                                                         \
+    previous = (T)punt;                                                                       \
+    while (ck_pr_cas_##S##_value(target, (C)previous, (C)(previous P 1), &previous) == false) \
+      ck_pr_stall();                                                                          \
+    *zero = previous == (T)Z;                                                                 \
+    return;                                                                                   \
+  }
 
 #define CK_PR_UNARY_S(K, X, S, M) CK_PR_UNARY(K, X, S, M, M)
 #define CK_PR_UNARY_Z_S(K, S, M, P, Z) CK_PR_UNARY_Z(K, S, M, M, P, M, Z)
@@ -778,43 +765,35 @@ CK_PR_UNARY_Z_S(dec, 8, uint8_t, -, 1)
 #undef CK_PR_UNARY_Z
 #undef CK_PR_UNARY
 
-#define CK_PR_N(K, S, M, T, P, C)					\
-	CK_CC_INLINE static void					\
-	ck_pr_##K##_##S(M *target)					\
-	{								\
-		T previous;						\
-		C punt;							\
-		punt = (C)ck_pr_load_##S(target);			\
-		previous = (T)punt;					\
-		while (ck_pr_cas_##S##_value(target,			\
-					     (C)previous,		\
-					     (C)(P previous),		\
-					     &previous) == false)	\
-			ck_pr_stall();					\
-									\
-		return;							\
-	}
+#define CK_PR_N(K, S, M, T, P, C)                                                           \
+  CK_CC_INLINE static void ck_pr_##K##_##S(M *target)                                       \
+  {                                                                                         \
+    T previous;                                                                             \
+    C punt;                                                                                 \
+    punt = (C)ck_pr_load_##S(target);                                                       \
+    previous = (T)punt;                                                                     \
+    while (ck_pr_cas_##S##_value(target, (C)previous, (C)(P previous), &previous) == false) \
+      ck_pr_stall();                                                                        \
+                                                                                            \
+    return;                                                                                 \
+  }
 
-#define CK_PR_N_Z(S, M, T, C)						\
-	CK_CC_INLINE static void					\
-	ck_pr_neg_##S##_zero(M *target, bool *zero)			\
-	{								\
-		T previous;						\
-		C punt;							\
-		punt = (C)ck_pr_load_##S(target);			\
-		previous = (T)punt;					\
-		while (ck_pr_cas_##S##_value(target,			\
-					     (C)previous,		\
-					     (C)(-previous),		\
-					     &previous) == false)	\
-			ck_pr_stall();					\
-									\
-		*zero = previous == 0;					\
-		return;							\
-	}
+#define CK_PR_N_Z(S, M, T, C)                                                              \
+  CK_CC_INLINE static void ck_pr_neg_##S##_zero(M *target, bool *zero)                     \
+  {                                                                                        \
+    T previous;                                                                            \
+    C punt;                                                                                \
+    punt = (C)ck_pr_load_##S(target);                                                      \
+    previous = (T)punt;                                                                    \
+    while (ck_pr_cas_##S##_value(target, (C)previous, (C)(-previous), &previous) == false) \
+      ck_pr_stall();                                                                       \
+                                                                                           \
+    *zero = previous == 0;                                                                 \
+    return;                                                                                \
+  }
 
-#define CK_PR_N_S(K, S, M, P)	CK_PR_N(K, S, M, M, P, M)
-#define CK_PR_N_Z_S(S, M) 	CK_PR_N_Z(S, M, M, M)
+#define CK_PR_N_S(K, S, M, P) CK_PR_N(K, S, M, M, P, M)
+#define CK_PR_N_Z_S(S, M) CK_PR_N_Z(S, M, M, M)
 
 #if defined(CK_F_PR_LOAD_CHAR) && defined(CK_F_PR_CAS_CHAR_VALUE)
 
@@ -982,37 +961,29 @@ CK_PR_N_Z_S(8, uint8_t)
 #undef CK_PR_N_Z
 #undef CK_PR_N
 
-#define CK_PR_FAA(S, M, T, C)						\
-	CK_CC_INLINE static C						\
-	ck_pr_faa_##S(M *target, T delta)				\
-	{								\
-		T previous;						\
-		C punt;							\
-		punt = (C)ck_pr_load_##S(target);			\
-		previous = (T)punt;					\
-		while (ck_pr_cas_##S##_value(target,			\
-					     (C)previous,		\
-					     (C)(previous + delta),	\
-					     &previous) == false)	\
-			ck_pr_stall();					\
-									\
-		return ((C)previous);					\
-	}
+#define CK_PR_FAA(S, M, T, C)                                                                     \
+  CK_CC_INLINE static C ck_pr_faa_##S(M *target, T delta)                                         \
+  {                                                                                               \
+    T previous;                                                                                   \
+    C punt;                                                                                       \
+    punt = (C)ck_pr_load_##S(target);                                                             \
+    previous = (T)punt;                                                                           \
+    while (ck_pr_cas_##S##_value(target, (C)previous, (C)(previous + delta), &previous) == false) \
+      ck_pr_stall();                                                                              \
+                                                                                                  \
+    return ((C)previous);                                                                         \
+  }
 
-#define CK_PR_FAS(S, M, C)						\
-	CK_CC_INLINE static C						\
-	ck_pr_fas_##S(M *target, C update)				\
-	{								\
-		C previous;						\
-		previous = ck_pr_load_##S(target);			\
-		while (ck_pr_cas_##S##_value(target,			\
-					     previous,			\
-					     update,			\
-					     &previous) == false)	\
-			ck_pr_stall();					\
-									\
-		return (previous);					\
-	}
+#define CK_PR_FAS(S, M, C)                                                      \
+  CK_CC_INLINE static C ck_pr_fas_##S(M *target, C update)                      \
+  {                                                                             \
+    C previous;                                                                 \
+    previous = ck_pr_load_##S(target);                                          \
+    while (ck_pr_cas_##S##_value(target, previous, update, &previous) == false) \
+      ck_pr_stall();                                                            \
+                                                                                \
+    return (previous);                                                          \
+  }
 
 #define CK_PR_FAA_S(S, M) CK_PR_FAA(S, M, M, M)
 #define CK_PR_FAS_S(S, M) CK_PR_FAS(S, M, M)
@@ -1149,4 +1120,3 @@ CK_PR_FAS_S(8, uint8_t)
 #undef CK_PR_FAS
 
 #endif /* _CK_PR_H */
-

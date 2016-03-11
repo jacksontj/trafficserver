@@ -7602,11 +7602,11 @@ HttpSM::is_redirect_required()
     HTTPStatus status = t_state.hdr_info.client_response.status_get();
     // check to see if the response from the orgin was a 301, 302, or 303
     switch (status) {
-    case HTTP_STATUS_MULTIPLE_CHOICES: // 300
-    case HTTP_STATUS_MOVED_PERMANENTLY: // 301
-    case HTTP_STATUS_MOVED_TEMPORARILY: // 302
-    case HTTP_STATUS_SEE_OTHER: // 303
-    case HTTP_STATUS_USE_PROXY: // 305
+    case HTTP_STATUS_MULTIPLE_CHOICES:   // 300
+    case HTTP_STATUS_MOVED_PERMANENTLY:  // 301
+    case HTTP_STATUS_MOVED_TEMPORARILY:  // 302
+    case HTTP_STATUS_SEE_OTHER:          // 303
+    case HTTP_STATUS_USE_PROXY:          // 305
     case HTTP_STATUS_TEMPORARY_REDIRECT: // 307
       redirect_required = true;
       break;

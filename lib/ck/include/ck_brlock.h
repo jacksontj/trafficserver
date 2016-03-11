@@ -45,236 +45,233 @@
 #include <stddef.h>
 
 struct ck_brlock_reader {
-	unsigned int n_readers;
-	struct ck_brlock_reader *previous;
-	struct ck_brlock_reader *next;
+  unsigned int n_readers;
+  struct ck_brlock_reader *previous;
+  struct ck_brlock_reader *next;
 };
 typedef struct ck_brlock_reader ck_brlock_reader_t;
 
-#define CK_BRLOCK_READER_INITIALIZER {0}
+#define CK_BRLOCK_READER_INITIALIZER \
+  {                                  \
+    0                                \
+  }
 
 struct ck_brlock {
-	struct ck_brlock_reader *readers;
-	unsigned int writer;
+  struct ck_brlock_reader *readers;
+  unsigned int writer;
 };
 typedef struct ck_brlock ck_brlock_t;
 
-#define CK_BRLOCK_INITIALIZER {NULL, false}
+#define CK_BRLOCK_INITIALIZER \
+  {                           \
+    NULL, false               \
+  }
 
 CK_CC_INLINE static void
 ck_brlock_init(struct ck_brlock *br)
 {
-
-	br->readers = NULL;
-	br->writer = false;
-	ck_pr_barrier();
-	return;
+  br->readers = NULL;
+  br->writer = false;
+  ck_pr_barrier();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_brlock_write_lock(struct ck_brlock *br)
 {
-	struct ck_brlock_reader *cursor;
+  struct ck_brlock_reader *cursor;
 
-	/*
-	 * As the frequency of write acquisitions should be low,
-	 * there is no point to more advanced contention avoidance.
-	 */
-	while (ck_pr_fas_uint(&br->writer, true) == true)
-		ck_pr_stall();
+  /*
+   * As the frequency of write acquisitions should be low,
+   * there is no point to more advanced contention avoidance.
+   */
+  while (ck_pr_fas_uint(&br->writer, true) == true)
+    ck_pr_stall();
 
-	ck_pr_fence_atomic_load();
+  ck_pr_fence_atomic_load();
 
-	/* The reader list is protected under the writer br. */
-	for (cursor = br->readers; cursor != NULL; cursor = cursor->next) {
-		while (ck_pr_load_uint(&cursor->n_readers) != 0)
-			ck_pr_stall();
-	}
+  /* The reader list is protected under the writer br. */
+  for (cursor = br->readers; cursor != NULL; cursor = cursor->next) {
+    while (ck_pr_load_uint(&cursor->n_readers) != 0)
+      ck_pr_stall();
+  }
 
-	/* Already acquired with respect to other writers. */
-	return;
+  /* Already acquired with respect to other writers. */
+  return;
 }
 
 CK_CC_INLINE static void
 ck_brlock_write_unlock(struct ck_brlock *br)
 {
-
-	ck_pr_fence_release();
-	ck_pr_store_uint(&br->writer, false);
-	return;
+  ck_pr_fence_release();
+  ck_pr_store_uint(&br->writer, false);
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_brlock_write_trylock(struct ck_brlock *br, unsigned int factor)
 {
-	struct ck_brlock_reader *cursor;
-	unsigned int steps = 0;
+  struct ck_brlock_reader *cursor;
+  unsigned int steps = 0;
 
-	while (ck_pr_fas_uint(&br->writer, true) == true) {
-		if (++steps >= factor)
-			return false;
+  while (ck_pr_fas_uint(&br->writer, true) == true) {
+    if (++steps >= factor)
+      return false;
 
-		ck_pr_stall();
-	}
+    ck_pr_stall();
+  }
 
-	/*
-	 * We do not require a strict fence here as atomic RMW operations
-	 * are serializing.
-	 */
-	ck_pr_fence_atomic_load();
+  /*
+   * We do not require a strict fence here as atomic RMW operations
+   * are serializing.
+   */
+  ck_pr_fence_atomic_load();
 
-	for (cursor = br->readers; cursor != NULL; cursor = cursor->next) {
-		while (ck_pr_load_uint(&cursor->n_readers) != 0) {
-			if (++steps >= factor) {
-				ck_brlock_write_unlock(br);
-				return false;
-			}
+  for (cursor = br->readers; cursor != NULL; cursor = cursor->next) {
+    while (ck_pr_load_uint(&cursor->n_readers) != 0) {
+      if (++steps >= factor) {
+        ck_brlock_write_unlock(br);
+        return false;
+      }
 
-			ck_pr_stall();
-		}
-	}
+      ck_pr_stall();
+    }
+  }
 
-	/* Already acquired with respect to other writers. */
-	return true;
+  /* Already acquired with respect to other writers. */
+  return true;
 }
 
 CK_CC_INLINE static void
 ck_brlock_read_register(struct ck_brlock *br, struct ck_brlock_reader *reader)
 {
+  reader->n_readers = 0;
+  reader->previous = NULL;
 
-	reader->n_readers = 0;
-	reader->previous = NULL;
+  /* Implicit compiler barrier. */
+  ck_brlock_write_lock(br);
 
-	/* Implicit compiler barrier. */
-	ck_brlock_write_lock(br);
+  reader->next = ck_pr_load_ptr(&br->readers);
+  if (reader->next != NULL)
+    reader->next->previous = reader;
+  ck_pr_store_ptr(&br->readers, reader);
 
-	reader->next = ck_pr_load_ptr(&br->readers);
-	if (reader->next != NULL)
-		reader->next->previous = reader;
-	ck_pr_store_ptr(&br->readers, reader);
-
-	ck_brlock_write_unlock(br);
-	return;
+  ck_brlock_write_unlock(br);
+  return;
 }
 
 CK_CC_INLINE static void
 ck_brlock_read_unregister(struct ck_brlock *br, struct ck_brlock_reader *reader)
 {
+  ck_brlock_write_lock(br);
 
-	ck_brlock_write_lock(br);
+  if (reader->next != NULL)
+    reader->next->previous = reader->previous;
 
-	if (reader->next != NULL)
-		reader->next->previous = reader->previous;
+  if (reader->previous != NULL)
+    reader->previous->next = reader->next;
+  else
+    br->readers = reader->next;
 
-	if (reader->previous != NULL)
-		reader->previous->next = reader->next;
-	else
-		br->readers = reader->next;
-
-	ck_brlock_write_unlock(br);
-	return;
+  ck_brlock_write_unlock(br);
+  return;
 }
 
 CK_CC_INLINE static void
 ck_brlock_read_lock(struct ck_brlock *br, struct ck_brlock_reader *reader)
 {
+  if (reader->n_readers >= 1) {
+    ck_pr_store_uint(&reader->n_readers, reader->n_readers + 1);
+    return;
+  }
 
-	if (reader->n_readers >= 1) {
-		ck_pr_store_uint(&reader->n_readers, reader->n_readers + 1);
-		return;
-	}
-
-	for (;;) {
-		while (ck_pr_load_uint(&br->writer) == true)
-			ck_pr_stall();
+  for (;;) {
+    while (ck_pr_load_uint(&br->writer) == true)
+      ck_pr_stall();
 
 #if defined(__x86__) || defined(__x86_64__)
-		ck_pr_fas_uint(&reader->n_readers, 1);
+    ck_pr_fas_uint(&reader->n_readers, 1);
 
-		/*
-		 * Serialize reader counter update with respect to load of
-		 * writer.
-		 */
-		ck_pr_fence_atomic_load();
+    /*
+     * Serialize reader counter update with respect to load of
+     * writer.
+     */
+    ck_pr_fence_atomic_load();
 #else
-		ck_pr_store_uint(&reader->n_readers, 1);
+    ck_pr_store_uint(&reader->n_readers, 1);
 
-		/*
-		 * Serialize reader counter update with respect to load of
-		 * writer.
-		 */
-		ck_pr_fence_store_load();
+    /*
+     * Serialize reader counter update with respect to load of
+     * writer.
+     */
+    ck_pr_fence_store_load();
 #endif
 
-		if (ck_pr_load_uint(&br->writer) == false)
-			break;
+    if (ck_pr_load_uint(&br->writer) == false)
+      break;
 
-		ck_pr_store_uint(&reader->n_readers, 0);
-	}
+    ck_pr_store_uint(&reader->n_readers, 0);
+  }
 
-	ck_pr_fence_load();
-	return;
+  ck_pr_fence_load();
+  return;
 }
 
 CK_CC_INLINE static bool
-ck_brlock_read_trylock(struct ck_brlock *br,
-		       struct ck_brlock_reader *reader,
-		       unsigned int factor)
+ck_brlock_read_trylock(struct ck_brlock *br, struct ck_brlock_reader *reader, unsigned int factor)
 {
-	unsigned int steps = 0;
+  unsigned int steps = 0;
 
-	if (reader->n_readers >= 1) {
-		ck_pr_store_uint(&reader->n_readers, reader->n_readers + 1);
-		return true;
-	}
+  if (reader->n_readers >= 1) {
+    ck_pr_store_uint(&reader->n_readers, reader->n_readers + 1);
+    return true;
+  }
 
-	for (;;) {
-		while (ck_pr_load_uint(&br->writer) == true) {
-			if (++steps >= factor)
-				return false;
+  for (;;) {
+    while (ck_pr_load_uint(&br->writer) == true) {
+      if (++steps >= factor)
+        return false;
 
-			ck_pr_stall();
-		}
+      ck_pr_stall();
+    }
 
 #if defined(__x86__) || defined(__x86_64__)
-		ck_pr_fas_uint(&reader->n_readers, 1);
+    ck_pr_fas_uint(&reader->n_readers, 1);
 
-		/*
-		 * Serialize reader counter update with respect to load of
-		 * writer.
-		 */
-		ck_pr_fence_atomic_load();
+    /*
+     * Serialize reader counter update with respect to load of
+     * writer.
+     */
+    ck_pr_fence_atomic_load();
 #else
-		ck_pr_store_uint(&reader->n_readers, 1);
+    ck_pr_store_uint(&reader->n_readers, 1);
 
-		/*
-		 * Serialize reader counter update with respect to load of
-		 * writer.
-		 */
-		ck_pr_fence_store_load();
+    /*
+     * Serialize reader counter update with respect to load of
+     * writer.
+     */
+    ck_pr_fence_store_load();
 #endif
 
-		if (ck_pr_load_uint(&br->writer) == false)
-			break;
+    if (ck_pr_load_uint(&br->writer) == false)
+      break;
 
-		ck_pr_store_uint(&reader->n_readers, 0);
+    ck_pr_store_uint(&reader->n_readers, 0);
 
-		if (++steps >= factor)
-			return false;
-	}
+    if (++steps >= factor)
+      return false;
+  }
 
-	ck_pr_fence_load();
-	return true;
+  ck_pr_fence_load();
+  return true;
 }
 
 CK_CC_INLINE static void
 ck_brlock_read_unlock(struct ck_brlock_reader *reader)
 {
-
-	ck_pr_fence_load_store();
-	ck_pr_store_uint(&reader->n_readers, reader->n_readers - 1);
-	return;
+  ck_pr_fence_load_store();
+  ck_pr_store_uint(&reader->n_readers, reader->n_readers - 1);
+  return;
 }
 
 #endif /* _CK_BRLOCK_H */
-

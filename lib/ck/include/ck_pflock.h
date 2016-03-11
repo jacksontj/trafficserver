@@ -39,105 +39,103 @@
 #include <ck_pr.h>
 
 struct ck_pflock {
-	uint32_t rin;
-	uint32_t rout;
-	uint32_t win;
-	uint32_t wout;
+  uint32_t rin;
+  uint32_t rout;
+  uint32_t win;
+  uint32_t wout;
 };
 typedef struct ck_pflock ck_pflock_t;
 
-#define CK_PFLOCK_LSB   0xFFFFFFF0
-#define CK_PFLOCK_RINC  0x100		/* Reader increment value. */
-#define CK_PFLOCK_WBITS 0x3		/* Writer bits in reader. */
-#define CK_PFLOCK_PRES  0x2		/* Writer present bit. */
-#define CK_PFLOCK_PHID  0x1		/* Phase ID bit. */
+#define CK_PFLOCK_LSB 0xFFFFFFF0
+#define CK_PFLOCK_RINC 0x100 /* Reader increment value. */
+#define CK_PFLOCK_WBITS 0x3  /* Writer bits in reader. */
+#define CK_PFLOCK_PRES 0x2   /* Writer present bit. */
+#define CK_PFLOCK_PHID 0x1   /* Phase ID bit. */
 
-#define CK_PFLOCK_INITIALIZER {0, 0, 0, 0}
+#define CK_PFLOCK_INITIALIZER \
+  {                           \
+    0, 0, 0, 0                \
+  }
 
 CK_CC_INLINE static void
 ck_pflock_init(struct ck_pflock *pf)
 {
+  pf->rin = 0;
+  pf->rout = 0;
+  pf->win = 0;
+  pf->wout = 0;
+  ck_pr_barrier();
 
-	pf->rin = 0;
-	pf->rout = 0;
-	pf->win = 0;
-	pf->wout = 0;
-	ck_pr_barrier();
-
-	return;
+  return;
 }
 
 CK_CC_INLINE static void
 ck_pflock_write_unlock(ck_pflock_t *pf)
 {
+  ck_pr_fence_release();
 
-	ck_pr_fence_release();
+  /* Migrate from write phase to read phase. */
+  ck_pr_and_32(&pf->rin, CK_PFLOCK_LSB);
 
-	/* Migrate from write phase to read phase. */
-	ck_pr_and_32(&pf->rin, CK_PFLOCK_LSB);
-
-	/* Allow other writers to continue. */
-	ck_pr_faa_32(&pf->wout, 1);
-	return;
+  /* Allow other writers to continue. */
+  ck_pr_faa_32(&pf->wout, 1);
+  return;
 }
 
 CK_CC_INLINE static void
 ck_pflock_write_lock(ck_pflock_t *pf)
 {
-	uint32_t ticket;
+  uint32_t ticket;
 
-	/* Acquire ownership of write-phase. */
-	ticket = ck_pr_faa_32(&pf->win, 1);
-	while (ck_pr_load_32(&pf->wout) != ticket)
-		ck_pr_stall();
+  /* Acquire ownership of write-phase. */
+  ticket = ck_pr_faa_32(&pf->win, 1);
+  while (ck_pr_load_32(&pf->wout) != ticket)
+    ck_pr_stall();
 
-	/*
-	 * Acquire ticket on read-side in order to allow them
-	 * to flush. Indicates to any incoming reader that a
-	 * write-phase is pending.
-	 */
-	ticket = ck_pr_faa_32(&pf->rin,
-	    (ticket & CK_PFLOCK_PHID) | CK_PFLOCK_PRES);
+  /*
+   * Acquire ticket on read-side in order to allow them
+   * to flush. Indicates to any incoming reader that a
+   * write-phase is pending.
+   */
+  ticket = ck_pr_faa_32(&pf->rin, (ticket & CK_PFLOCK_PHID) | CK_PFLOCK_PRES);
 
-	/* Wait for any pending readers to flush. */
-	while (ck_pr_load_32(&pf->rout) != ticket)
-		ck_pr_stall();
+  /* Wait for any pending readers to flush. */
+  while (ck_pr_load_32(&pf->rout) != ticket)
+    ck_pr_stall();
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_pflock_read_unlock(ck_pflock_t *pf)
 {
-
-	ck_pr_fence_release();
-	ck_pr_faa_32(&pf->rout, CK_PFLOCK_RINC);
-	return;
+  ck_pr_fence_release();
+  ck_pr_faa_32(&pf->rout, CK_PFLOCK_RINC);
+  return;
 }
 
 CK_CC_INLINE static void
 ck_pflock_read_lock(ck_pflock_t *pf)
 {
-	uint32_t w;
+  uint32_t w;
 
-	/*
-	 * If no writer is present, then the operation has completed
-	 * successfully.
-	 */
-	w = ck_pr_faa_32(&pf->rin, CK_PFLOCK_RINC) & CK_PFLOCK_WBITS;
-	if (w == 0)
-		goto leave;
+  /*
+   * If no writer is present, then the operation has completed
+   * successfully.
+   */
+  w = ck_pr_faa_32(&pf->rin, CK_PFLOCK_RINC) & CK_PFLOCK_WBITS;
+  if (w == 0)
+    goto leave;
 
-	/* Wait for current write phase to complete. */
-	while ((ck_pr_load_32(&pf->rin) & CK_PFLOCK_WBITS) == w)
-		ck_pr_stall();
+  /* Wait for current write phase to complete. */
+  while ((ck_pr_load_32(&pf->rin) & CK_PFLOCK_WBITS) == w)
+    ck_pr_stall();
 
 leave:
-	/* Acquire semantics with respect to readers. */
-	ck_pr_fence_acquire();
-	return;
+  /* Acquire semantics with respect to readers. */
+  ck_pr_fence_acquire();
+  return;
 }
 
 #endif /* _CK_PFLOCK_H */
-

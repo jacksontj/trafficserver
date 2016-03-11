@@ -51,8 +51,8 @@ typedef void ck_epoch_cb_t(ck_epoch_entry_t *);
  * ck_epoch_cb_t functions (with ck_epoch_call).
  */
 struct ck_epoch_entry {
-	ck_epoch_cb_t *function;
-	ck_stack_entry_t stack_entry;
+  ck_epoch_cb_t *function;
+  ck_stack_entry_t stack_entry;
 };
 
 /*
@@ -61,22 +61,22 @@ struct ck_epoch_entry {
 #define CK_EPOCH_CONTAINER(T, M, N) CK_CC_CONTAINER(struct ck_epoch_entry, T, M, N)
 
 struct ck_epoch_record {
-	unsigned int state;
-	unsigned int epoch;
-	unsigned int active;
-	unsigned int n_pending;
-	unsigned int n_peak;
-	unsigned long n_dispatch;
-	ck_stack_t pending[CK_EPOCH_LENGTH];
-	ck_stack_entry_t record_next;
+  unsigned int state;
+  unsigned int epoch;
+  unsigned int active;
+  unsigned int n_pending;
+  unsigned int n_peak;
+  unsigned long n_dispatch;
+  ck_stack_t pending[CK_EPOCH_LENGTH];
+  ck_stack_entry_t record_next;
 } CK_CC_CACHELINE;
 typedef struct ck_epoch_record ck_epoch_record_t;
 
 struct ck_epoch {
-	unsigned int epoch;
-	char pad[CK_MD_CACHELINE - sizeof(unsigned int)];
-	ck_stack_t records;
-	unsigned int n_free;
+  unsigned int epoch;
+  char pad[CK_MD_CACHELINE - sizeof(unsigned int)];
+  ck_stack_t records;
+  unsigned int n_free;
 };
 typedef struct ck_epoch ck_epoch_t;
 
@@ -86,34 +86,33 @@ typedef struct ck_epoch ck_epoch_t;
 CK_CC_INLINE static void
 ck_epoch_begin(ck_epoch_t *epoch, ck_epoch_record_t *record)
 {
+  /*
+   * Only observe new epoch if thread is not recursing into a read
+   * section.
+   */
+  if (record->active == 0) {
+    unsigned int g_epoch = ck_pr_load_uint(&epoch->epoch);
 
-	/*
-	 * Only observe new epoch if thread is not recursing into a read
-	 * section.
-	 */
-	if (record->active == 0) {
-		unsigned int g_epoch = ck_pr_load_uint(&epoch->epoch);
-
-		/*
-		 * It is possible for loads to be re-ordered before the store
-		 * is committed into the caller's epoch and active fields.
-		 * For this reason, store to load serialization is necessary.
-		 */
-		ck_pr_store_uint(&record->epoch, g_epoch);
+    /*
+     * It is possible for loads to be re-ordered before the store
+     * is committed into the caller's epoch and active fields.
+     * For this reason, store to load serialization is necessary.
+     */
+    ck_pr_store_uint(&record->epoch, g_epoch);
 
 #if defined(__x86__) || defined(__x86_64__)
-		ck_pr_fas_uint(&record->active, 1);
-		ck_pr_fence_atomic_load();
+    ck_pr_fas_uint(&record->active, 1);
+    ck_pr_fence_atomic_load();
 #else
-		ck_pr_store_uint(&record->active, 1);
-		ck_pr_fence_store_load();
+    ck_pr_store_uint(&record->active, 1);
+    ck_pr_fence_store_load();
 #endif
 
-		return;
-	}
+    return;
+  }
 
-	ck_pr_store_uint(&record->active, record->active + 1);
-	return;
+  ck_pr_store_uint(&record->active, record->active + 1);
+  return;
 }
 
 /*
@@ -122,12 +121,11 @@ ck_epoch_begin(ck_epoch_t *epoch, ck_epoch_record_t *record)
 CK_CC_INLINE static void
 ck_epoch_end(ck_epoch_t *global, ck_epoch_record_t *record)
 {
+  (void)global;
 
-	(void)global;
-
-	ck_pr_fence_release();
-	ck_pr_store_uint(&record->active, record->active - 1);
-	return;
+  ck_pr_fence_release();
+  ck_pr_store_uint(&record->active, record->active - 1);
+  return;
 }
 
 /*
@@ -136,18 +134,15 @@ ck_epoch_end(ck_epoch_t *global, ck_epoch_record_t *record)
  * non-blocking deferral.
  */
 CK_CC_INLINE static void
-ck_epoch_call(ck_epoch_t *epoch,
-	      ck_epoch_record_t *record,
-	      ck_epoch_entry_t *entry,
-	      ck_epoch_cb_t *function)
+ck_epoch_call(ck_epoch_t *epoch, ck_epoch_record_t *record, ck_epoch_entry_t *entry, ck_epoch_cb_t *function)
 {
-	unsigned int e = ck_pr_load_uint(&epoch->epoch);
-	unsigned int offset = e & (CK_EPOCH_LENGTH - 1);
+  unsigned int e = ck_pr_load_uint(&epoch->epoch);
+  unsigned int offset = e & (CK_EPOCH_LENGTH - 1);
 
-	record->n_pending++;
-	entry->function = function;
-	ck_stack_push_spnc(&record->pending[offset], &entry->stack_entry);
-	return;
+  record->n_pending++;
+  entry->function = function;
+  ck_stack_push_spnc(&record->pending[offset], &entry->stack_entry);
+  return;
 }
 
 void ck_epoch_init(ck_epoch_t *);
@@ -160,4 +155,3 @@ void ck_epoch_barrier(ck_epoch_t *, ck_epoch_record_t *);
 void ck_epoch_reclaim(ck_epoch_record_t *);
 
 #endif /* _CK_EPOCH_H */
-

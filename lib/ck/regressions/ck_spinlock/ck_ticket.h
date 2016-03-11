@@ -8,4 +8,3 @@
 #define TRYLOCK ck_spinlock_ticket_trylock(&lock)
 #endif
 #define LOCKED ck_spinlock_ticket_locked(&lock)
-

@@ -37,82 +37,78 @@
 #define CK_F_SPINLOCK_FAS
 
 struct ck_spinlock_fas {
-	unsigned int value;
+  unsigned int value;
 };
 typedef struct ck_spinlock_fas ck_spinlock_fas_t;
 
-#define CK_SPINLOCK_FAS_INITIALIZER {false}
+#define CK_SPINLOCK_FAS_INITIALIZER \
+  {                                 \
+    false                           \
+  }
 
 CK_CC_INLINE static void
 ck_spinlock_fas_init(struct ck_spinlock_fas *lock)
 {
-
-	lock->value = false;
-	ck_pr_barrier();
-	return;
+  lock->value = false;
+  ck_pr_barrier();
+  return;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_fas_trylock(struct ck_spinlock_fas *lock)
 {
-	bool value;
+  bool value;
 
-	value = ck_pr_fas_uint(&lock->value, true);
-	if (value == false)
-		ck_pr_fence_acquire();
+  value = ck_pr_fas_uint(&lock->value, true);
+  if (value == false)
+    ck_pr_fence_acquire();
 
-	return !value;
+  return !value;
 }
 
 CK_CC_INLINE static bool
 ck_spinlock_fas_locked(struct ck_spinlock_fas *lock)
 {
-
-	ck_pr_fence_load();
-	return ck_pr_load_uint(&lock->value);
+  ck_pr_fence_load();
+  return ck_pr_load_uint(&lock->value);
 }
 
 CK_CC_INLINE static void
 ck_spinlock_fas_lock(struct ck_spinlock_fas *lock)
 {
+  while (ck_pr_fas_uint(&lock->value, true) == true) {
+    while (ck_pr_load_uint(&lock->value) == true)
+      ck_pr_stall();
+  }
 
-	while (ck_pr_fas_uint(&lock->value, true) == true) {
-		while (ck_pr_load_uint(&lock->value) == true)
-			ck_pr_stall();
-	}
-
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_fas_lock_eb(struct ck_spinlock_fas *lock)
 {
-	ck_backoff_t backoff = CK_BACKOFF_INITIALIZER;
+  ck_backoff_t backoff = CK_BACKOFF_INITIALIZER;
 
-	while (ck_pr_fas_uint(&lock->value, true) == true)
-		ck_backoff_eb(&backoff);
+  while (ck_pr_fas_uint(&lock->value, true) == true)
+    ck_backoff_eb(&backoff);
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_spinlock_fas_unlock(struct ck_spinlock_fas *lock)
 {
-
-	ck_pr_fence_release();
-	ck_pr_store_uint(&lock->value, false);
-	return;
+  ck_pr_fence_release();
+  ck_pr_store_uint(&lock->value, false);
+  return;
 }
 
-CK_ELIDE_PROTOTYPE(ck_spinlock_fas, ck_spinlock_fas_t,
-    ck_spinlock_fas_locked, ck_spinlock_fas_lock,
-    ck_spinlock_fas_locked, ck_spinlock_fas_unlock)
+CK_ELIDE_PROTOTYPE(ck_spinlock_fas, ck_spinlock_fas_t, ck_spinlock_fas_locked, ck_spinlock_fas_lock, ck_spinlock_fas_locked,
+                   ck_spinlock_fas_unlock)
 
-CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock_fas, ck_spinlock_fas_t,
-    ck_spinlock_fas_locked, ck_spinlock_fas_trylock)
+CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock_fas, ck_spinlock_fas_t, ck_spinlock_fas_locked, ck_spinlock_fas_trylock)
 
 #endif /* CK_F_SPINLOCK_FAS */
 #endif /* _CK_SPINLOCK_FAS_H */
-

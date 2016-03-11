@@ -30,7 +30,7 @@
  ****************************************************************************/
 
 #ifndef _ink_error_h_
-#define	_ink_error_h_
+#define _ink_error_h_
 
 #include <stdarg.h>
 #include "ink_platform.h"
@@ -39,7 +39,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif                          /* __cplusplus */
+#endif /* __cplusplus */
 
 inkcoreapi void ink_fatal_va(int return_code, const char *message_format, va_list ap) TS_NORETURN;
 void ink_fatal(int return_code, const char *message_format, ...) TS_PRINTFLIKE(2, 3) TS_NORETURN;
@@ -57,6 +57,6 @@ int ink_set_dprintf_level(int debug_level);
 
 #ifdef __cplusplus
 }
-#endif                          /* __cplusplus */
+#endif /* __cplusplus */
 
 #endif

@@ -33,11 +33,7 @@ bool rec_debug = false;
  * RecTreeNode
  *
  *************************************************************************/
-RecTreeNode::RecTreeNode(const char *t):
-record_ptr(NULL),
-subtree_ptr(new RecTree(this)),
-var_name_ptr(NULL),
-num_leaf(0)
+RecTreeNode::RecTreeNode(const char *t) : record_ptr(NULL), subtree_ptr(new RecTree(this)), var_name_ptr(NULL), num_leaf(0)
 {
   if (t) {
     node_name = ats_strdup(t);
@@ -45,7 +41,6 @@ num_leaf(0)
     node_name = ats_strdup("root");
   }
 }
-
 
 
 RecTreeNode::~RecTreeNode()
@@ -75,7 +70,7 @@ RecTreeNode::print()
  * RecTree
  *
  *************************************************************************/
-RecTree::RecTree(RecTreeNode * n)
+RecTree::RecTree(RecTreeNode *n)
 {
   if (n == NULL) {
     n = new RecTreeNode("base");
@@ -128,7 +123,7 @@ RecTree::rec_tree_insert(const char *var_name, const char *var_name_ptr)
     if (rec_debug) {
       RecTreeDebug("RecTree::insert() -- add subtree with %s\n", first_token);
     }
-    subtree = new RecTreeNode((char *) first_token);
+    subtree = new RecTreeNode((char *)first_token);
     ink_assert(subtree);
     m_root.enqueue(subtree);
   }
@@ -148,7 +143,6 @@ RecTree::rec_tree_insert(const char *var_name, const char *var_name_ptr)
   if (this_node) {
     (this_node->num_leaf)++;
   }
-
 }
 
 
@@ -158,7 +152,7 @@ RecTree::rec_tree_insert(const char *var_name, const char *var_name_ptr)
 void
 RecTree::print()
 {
-  for (RecTreeNode * node = first(); node; node = next(node)) {
+  for (RecTreeNode *node = first(); node; node = next(node)) {
     node->print();
   }
 }
@@ -170,7 +164,6 @@ RecTree::print()
 RecTree *
 RecTree::rec_tree_get(char *path_name)
 {
-
   Tokenizer targetTok(".");
   targetTok.Initialize(path_name);
   tok_iter_state targetTok_state;
@@ -211,7 +204,6 @@ RecTree::rec_tree_get(char *path_name)
       return subtree->subtree_ptr->rec_tree_get(rest_token);
     }
   }
-
 }
 
 
@@ -222,7 +214,6 @@ RecTree::rec_tree_get(char *path_name)
 void
 RecTree::rec_tree_get_list(char *path_name, char ***buf, int *count)
 {
-
   int i = 0;
   RecTree *subtree = rec_tree_get(path_name);
 
@@ -250,7 +241,6 @@ RecTree::rec_tree_get_list(char *path_name, char ***buf, int *count)
       RecTreeDebug("[%d] %s\n", i, (*buf)[i]);
     }
   }
-
 }
 
 
@@ -258,20 +248,18 @@ RecTree::rec_tree_get_list(char *path_name, char ***buf, int *count)
 void
 RecTree::p_rec_tree_get_list(char *path_name, char ***buffer, int *index)
 {
-
   if (this_node->var_name_ptr) {
-    (*buffer)[(*index)] = (char*)this_node->var_name_ptr;
+    (*buffer)[(*index)] = (char *)this_node->var_name_ptr;
     if (rec_debug) {
       RecTreeDebug("%d %s\n", (*index), (*buffer)[(*index)]);
     }
     (*index)++;
   }
 
-  for (RecTreeNode * subtree = first(); subtree; subtree = next(subtree)) {
+  for (RecTreeNode *subtree = first(); subtree; subtree = next(subtree)) {
     if (rec_debug) {
       RecTreeDebug("current node: %s, subtree node: %s\n", this_node->node_name, subtree->node_name);
     }
     subtree->subtree_ptr->p_rec_tree_get_list(&(*path_name), &(*buffer), &(*index));
   }
-
 }

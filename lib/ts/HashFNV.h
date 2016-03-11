@@ -31,8 +31,7 @@
 #include "Hash.h"
 #include <stdint.h>
 
-struct ATSHash32FNV1a:ATSHash32
-{
+struct ATSHash32FNV1a : ATSHash32 {
   ATSHash32FNV1a(void);
   void update(const void *data, size_t len);
   void final(void);
@@ -40,11 +39,10 @@ struct ATSHash32FNV1a:ATSHash32
   void clear(void);
 
 private:
-    uint32_t hval;
+  uint32_t hval;
 };
 
-struct ATSHash64FNV1a:ATSHash64
-{
+struct ATSHash64FNV1a : ATSHash64 {
   ATSHash64FNV1a(void);
   void update(const void *data, size_t len);
   void final(void);
@@ -52,7 +50,7 @@ struct ATSHash64FNV1a:ATSHash64
   void clear(void);
 
 private:
-    uint64_t hval;
+  uint64_t hval;
 };
 
 #endif

@@ -31,18 +31,23 @@ class Http2ClientSession;
 class Http2ConnectionSettings
 {
 public:
-  unsigned get(Http2SettingsIdentifier id) const {
+  unsigned
+  get(Http2SettingsIdentifier id) const
+  {
     return this->settings[indexof(id)];
   }
 
-  unsigned set(Http2SettingsIdentifier id, unsigned value) {
+  unsigned
+  set(Http2SettingsIdentifier id, unsigned value)
+  {
     return this->settings[indexof(id)] = value;
   }
 
 private:
-
   // Settings ID is 1-based, so convert it to a 0-based index.
-  static unsigned indexof(Http2SettingsIdentifier id) {
+  static unsigned
+  indexof(Http2SettingsIdentifier id)
+  {
     return id - 1;
   }
 
@@ -57,12 +62,9 @@ private:
 class Http2ConnectionState : public Continuation
 {
 public:
+  Http2ConnectionState() : Continuation(NULL), ua_session(NULL) { SET_HANDLER(&Http2ConnectionState::main_event_handler); }
 
-  Http2ConnectionState() : Continuation(NULL), ua_session(NULL) {
-    SET_HANDLER(&Http2ConnectionState::main_event_handler);
-  }
-
-  Http2ClientSession * ua_session;
+  Http2ClientSession *ua_session;
 
   // Settings.
   Http2ConnectionSettings server_settings;
@@ -72,8 +74,8 @@ public:
   int state_closed(int, void *);
 
 private:
-  Http2ConnectionState(const Http2ConnectionState&); // noncopyable
-  Http2ConnectionState& operator=(const Http2ConnectionState&); // noncopyable
+  Http2ConnectionState(const Http2ConnectionState &);            // noncopyable
+  Http2ConnectionState &operator=(const Http2ConnectionState &); // noncopyable
 };
 
 #endif // __HTTP2_CONNECTION_STATE_H__

@@ -39,58 +39,54 @@ struct ck_hp_hazard;
 typedef void (*ck_hp_destructor_t)(void *);
 
 struct ck_hp {
-	ck_stack_t subscribers;
-	unsigned int n_subscribers;
-	unsigned int n_free;
-	unsigned int threshold;
-	unsigned int degree;
-	ck_hp_destructor_t destroy;
+  ck_stack_t subscribers;
+  unsigned int n_subscribers;
+  unsigned int n_free;
+  unsigned int threshold;
+  unsigned int degree;
+  ck_hp_destructor_t destroy;
 };
 typedef struct ck_hp ck_hp_t;
 
 struct ck_hp_hazard {
-	void *pointer;
-	void *data;
-	ck_stack_entry_t pending_entry;
+  void *pointer;
+  void *data;
+  ck_stack_entry_t pending_entry;
 };
 typedef struct ck_hp_hazard ck_hp_hazard_t;
 
-enum {
-	CK_HP_USED = 0,
-	CK_HP_FREE = 1
-};
+enum { CK_HP_USED = 0, CK_HP_FREE = 1 };
 
 struct ck_hp_record {
-	int state;
-	void **pointers;
-	void *cache[CK_HP_CACHE];
-	struct ck_hp *global;
-	ck_stack_t pending;
-	unsigned int n_pending;
-	ck_stack_entry_t global_entry;
-	unsigned int n_peak;
-	uint64_t n_reclamations;
+  int state;
+  void **pointers;
+  void *cache[CK_HP_CACHE];
+  struct ck_hp *global;
+  ck_stack_t pending;
+  unsigned int n_pending;
+  ck_stack_entry_t global_entry;
+  unsigned int n_peak;
+  uint64_t n_reclamations;
 } CK_CC_CACHELINE;
 typedef struct ck_hp_record ck_hp_record_t;
 
 CK_CC_INLINE static void
 ck_hp_set(struct ck_hp_record *record, unsigned int i, void *pointer)
 {
-
-	ck_pr_store_ptr(&record->pointers[i], pointer);
-	return;
+  ck_pr_store_ptr(&record->pointers[i], pointer);
+  return;
 }
 
 CK_CC_INLINE static void
 ck_hp_clear(struct ck_hp_record *record)
 {
-	void **pointers = record->pointers;
-	unsigned int i;
+  void **pointers = record->pointers;
+  unsigned int i;
 
-	for (i = 0; i < record->global->degree; i++)
-		*pointers++ = NULL;
+  for (i = 0; i < record->global->degree; i++)
+    *pointers++ = NULL;
 
-	return;
+  return;
 }
 
 void ck_hp_init(ck_hp_t *, unsigned int, unsigned int, ck_hp_destructor_t);
@@ -104,4 +100,3 @@ void ck_hp_retire(ck_hp_record_t *, ck_hp_hazard_t *, void *, void *);
 void ck_hp_purge(ck_hp_record_t *);
 
 #endif /* _CK_HP_H */
-

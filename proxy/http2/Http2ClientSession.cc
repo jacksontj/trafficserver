@@ -24,35 +24,35 @@
 #include "Http2ClientSession.h"
 #include "HttpDebugNames.h"
 
-#define STATE_ENTER(state_name, event) do { \
-  DebugSsn(this, "http2_cs", "[%" PRId64 "] [%s, %s]", this->connection_id(), \
-    #state_name, HttpDebugNames::get_event_name(event)); \
-} while (0)
+#define STATE_ENTER(state_name, event)                                                       \
+  do {                                                                                       \
+    DebugSsn(this, "http2_cs", "[%" PRId64 "] [%s, %s]", this->connection_id(), #state_name, \
+             HttpDebugNames::get_event_name(event));                                         \
+  } while (0)
 
-#define DebugHttp2Ssn(fmt, ...) \
-  DebugSsn(this, "http2_cs",  "[%" PRId64 "] " fmt, this->connection_id(), __VA_ARGS__)
+#define DebugHttp2Ssn(fmt, ...) DebugSsn(this, "http2_cs", "[%" PRId64 "] " fmt, this->connection_id(), __VA_ARGS__)
 
-#define DebugHttp2Ssn0(msg) \
-  DebugSsn(this, "http2_cs",  "[%" PRId64 "] " msg, this->connection_id())
+#define DebugHttp2Ssn0(msg) DebugSsn(this, "http2_cs", "[%" PRId64 "] " msg, this->connection_id())
 
-#define HTTP2_SET_SESSION_HANDLER(handler) do { \
-  this->session_handler = (handler); \
-} while (0)
+#define HTTP2_SET_SESSION_HANDLER(handler) \
+  do {                                     \
+    this->session_handler = (handler);     \
+  } while (0)
 
 ClassAllocator<Http2ClientSession> http2ClientSessionAllocator("http2ClientSessionAllocator");
 
 // memcpy the requested bytes from the IOBufferReader, returning how many were actually copied.
 static inline unsigned
-copy_from_buffer_reader(void * dst, IOBufferReader * reader, unsigned nbytes)
+copy_from_buffer_reader(void *dst, IOBufferReader *reader, unsigned nbytes)
 {
-    char * end;
+  char *end;
 
-    end = reader->memcpy(dst, nbytes, 0 /* offset */);
-    return end - (char *)dst;
+  end = reader->memcpy(dst, nbytes, 0 /* offset */);
+  return end - (char *)dst;
 }
 
 static int
-send_connection_event(Continuation * cont, int event, void * edata)
+send_connection_event(Continuation *cont, int event, void *edata)
 {
   MUTEX_LOCK(lock, cont->mutex, this_ethread());
   return cont->handleEvent(event, edata);
@@ -78,7 +78,7 @@ Http2ClientSession::destroy()
 void
 Http2ClientSession::start()
 {
-  VIO * read_vio;
+  VIO *read_vio;
 
   MUTEX_LOCK(lock, this->mutex, this_ethread());
 
@@ -93,7 +93,7 @@ Http2ClientSession::start()
 }
 
 void
-Http2ClientSession::new_connection(NetVConnection * new_vc, MIOBuffer * iobuf, IOBufferReader * reader, bool backdoor)
+Http2ClientSession::new_connection(NetVConnection *new_vc, MIOBuffer *iobuf, IOBufferReader *reader, bool backdoor)
 {
   // HTTP/2 for the backdoor connections? Let's not deal woth that yet.
   ink_release_assert(backdoor == false);
@@ -117,13 +117,13 @@ Http2ClientSession::new_connection(NetVConnection * new_vc, MIOBuffer * iobuf, I
 }
 
 VIO *
-Http2ClientSession::do_io_read(Continuation * c, int64_t nbytes, MIOBuffer * buf)
+Http2ClientSession::do_io_read(Continuation *c, int64_t nbytes, MIOBuffer *buf)
 {
   return this->client_vc->do_io_read(c, nbytes, buf);
 }
 
 VIO *
-Http2ClientSession::do_io_write(Continuation * c, int64_t nbytes, IOBufferReader * buf, bool owner)
+Http2ClientSession::do_io_write(Continuation *c, int64_t nbytes, IOBufferReader *buf, bool owner)
 {
   return this->client_vc->do_io_write(c, nbytes, buf, owner);
 }
@@ -151,13 +151,13 @@ Http2ClientSession::do_io_close(int alerrno)
 }
 
 void
-Http2ClientSession::reenable(VIO * vio)
+Http2ClientSession::reenable(VIO *vio)
 {
   this->client_vc->reenable(vio);
 }
 
 int
-Http2ClientSession::main_event_handler(int event, void * edata)
+Http2ClientSession::main_event_handler(int event, void *edata)
 {
   ink_assert(this->mutex->thread_holding == this_ethread());
 
@@ -167,7 +167,7 @@ Http2ClientSession::main_event_handler(int event, void * edata)
     return (this->*session_handler)(event, edata);
 
   case HTTP2_SESSION_EVENT_XMIT: {
-    Http2Frame * frame = (Http2Frame *)edata;
+    Http2Frame *frame = (Http2Frame *)edata;
     frame->xmit(this->write_buffer);
     return 0;
   }
@@ -188,13 +188,12 @@ Http2ClientSession::main_event_handler(int event, void * edata)
     ink_release_assert(0);
     return 0;
   }
-
 }
 
 int
-Http2ClientSession::state_read_connection_preface(int event, void * edata)
+Http2ClientSession::state_read_connection_preface(int event, void *edata)
 {
-  VIO * vio = (VIO *)edata;
+  VIO *vio = (VIO *)edata;
 
   STATE_ENTER(&Http2ClientSession::state_read_connection_preface, event);
   ink_assert(event == VC_EVENT_READ_COMPLETE || event == VC_EVENT_READ_READY);
@@ -234,9 +233,9 @@ Http2ClientSession::state_read_connection_preface(int event, void * edata)
 }
 
 int
-Http2ClientSession::state_start_frame_read(int event, void * edata)
+Http2ClientSession::state_start_frame_read(int event, void *edata)
 {
-  VIO * vio = (VIO *)edata;
+  VIO *vio = (VIO *)edata;
 
   STATE_ENTER(&Http2ClientSession::state_start_frame_read, event);
   ink_assert(event == VC_EVENT_READ_COMPLETE || event == VC_EVENT_READ_READY);
@@ -254,9 +253,8 @@ Http2ClientSession::state_start_frame_read(int event, void * edata)
       return 0;
     }
 
-    DebugHttp2Ssn("frame header length=%u, type=%u, flags=0x%x, streamid=%u",
-        (unsigned)this->current_hdr.length, (unsigned)this->current_hdr.type,
-        (unsigned)this->current_hdr.flags, this->current_hdr.streamid);
+    DebugHttp2Ssn("frame header length=%u, type=%u, flags=0x%x, streamid=%u", (unsigned)this->current_hdr.length,
+                  (unsigned)this->current_hdr.type, (unsigned)this->current_hdr.flags, this->current_hdr.streamid);
 
     this->sm_reader->consume(nbytes);
 
@@ -284,9 +282,9 @@ Http2ClientSession::state_start_frame_read(int event, void * edata)
 }
 
 int
-Http2ClientSession::state_complete_frame_read(int event, void * edata)
+Http2ClientSession::state_complete_frame_read(int event, void *edata)
 {
-  VIO * vio = (VIO *)edata;
+  VIO *vio = (VIO *)edata;
 
   STATE_ENTER(&Http2ClientSession::state_complete_frame_read, event);
   ink_assert(event == VC_EVENT_READ_COMPLETE || event == VC_EVENT_READ_READY);

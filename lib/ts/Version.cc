@@ -41,17 +41,13 @@ AppVersionInfo::AppVersionInfo()
 
 
 void
-AppVersionInfo::setup(const char *pkg_name, const char *app_name, const char *app_version,
-                      const char *build_date, const char *build_time, const char *build_machine,
-                      const char *build_person, const char *build_cflags)
+AppVersionInfo::setup(const char *pkg_name, const char *app_name, const char *app_version, const char *build_date,
+                      const char *build_time, const char *build_machine, const char *build_person, const char *build_cflags)
 {
   char month_name[8];
   int year, month, day, hour, minute, second;
 
-  static const char *months[] = {
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "???"
-  };
+  static const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "???"};
 
   // coverity[secure_coding]
   sscanf(build_time, "%d:%d:%d", &hour, &minute, &second);
@@ -107,9 +103,8 @@ AppVersionInfo::setup(const char *pkg_name, const char *app_name, const char *ap
   if (FullVersionInfoStr[0] == '\0')
     ink_strlcpy(FullVersionInfoStr, "?", sizeof(FullVersionInfoStr));
 
-  snprintf(FullVersionInfoStr, sizeof(FullVersionInfoStr),
-           "%s - %s - %s - (build # %s on %s at %s)",
-           PkgStr, AppStr, VersionStr, BldNumStr, BldDateStr, BldTimeStr);
+  snprintf(FullVersionInfoStr, sizeof(FullVersionInfoStr), "%s - %s - %s - (build # %s on %s at %s)", PkgStr, AppStr, VersionStr,
+           BldNumStr, BldDateStr, BldTimeStr);
 
   defined = 1;
 }

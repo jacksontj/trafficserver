@@ -21,7 +21,7 @@
   limitations under the License.
  */
 
-#if !defined (_Compatability_h_)
+#if !defined(_Compatability_h_)
 #define _Compatability_h_
 
 #include <sys/types.h>
@@ -35,17 +35,21 @@
 // We can't use #define for min and max becuase it will conflict with
 // other declarations of min and max functions.  This conflict
 // occurs with STL
-template<class T> T min(const T a, const T b)
+template <class T>
+T
+min(const T a, const T b)
 {
   return a < b ? a : b;
 }
 
-template<class T> T max(const T a, const T b)
+template <class T>
+T
+max(const T a, const T b)
 {
   return a > b ? a : b;
 }
 
-#define _O_ATTRIB_NORMAL  0x0000
+#define _O_ATTRIB_NORMAL 0x0000
 #define _O_ATTRIB_OVERLAPPED 0x0000
 
 //

@@ -25,7 +25,7 @@
 #include "lulu.h"
 
 // This is defined in header_rewrite.cc, used here for debugging
-extern char* HOOK_NAMES[];
+extern char *HOOK_NAMES[];
 
 
 // Collect all resources
@@ -108,7 +108,7 @@ Resources::gather(const ResourceIDs ids, TSHttpHookID hook)
     break;
   }
 
-    _ready  = true;
+  _ready = true;
 }
 
 void

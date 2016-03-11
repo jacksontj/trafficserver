@@ -21,16 +21,15 @@
 extern "C" {
 #define PCRE_SPTR const char *
 
-struct real_pcre;   /* declaration; the definition is private  */
+struct real_pcre; /* declaration; the definition is private  */
 typedef struct real_pcre pcre;
 
 typedef struct pcre_extra {
 } pcre_extra;
 
 int
-pcre_exec(const pcre *argument_re, const pcre_extra *extra_data,
-          PCRE_SPTR subject, int length, int start_offset, int options, int *offsets,
-          int offsetcount)
+pcre_exec(const pcre *argument_re, const pcre_extra *extra_data, PCRE_SPTR subject, int length, int start_offset, int options,
+          int *offsets, int offsetcount)
 {
   __coverity_panic__();
 }

@@ -32,102 +32,99 @@
  * described in:
  *	John M. Mellor-Crummey and Michael L. Scott. 1991.
  *	Scalable reader-writer synchronization for shared-memory
- *	multiprocessors. SIGPLAN Not. 26, 7 (April 1991), 106-113. 
+ *	multiprocessors. SIGPLAN Not. 26, 7 (April 1991), 106-113.
  */
 
 #include <ck_cc.h>
 #include <ck_pr.h>
 
 struct ck_tflock_ticket {
-	uint32_t request;
-	uint32_t completion;
+  uint32_t request;
+  uint32_t completion;
 };
 typedef struct ck_tflock_ticket ck_tflock_ticket_t;
 
-#define CK_TFLOCK_TICKET_INITIALIZER { 0, 0 }
+#define CK_TFLOCK_TICKET_INITIALIZER \
+  {                                  \
+    0, 0                             \
+  }
 
-#define CK_TFLOCK_TICKET_RC_INCR	0x10000U	/* Read-side increment. */
-#define CK_TFLOCK_TICKET_WC_INCR	0x1U		/* Write-side increment. */
-#define CK_TFLOCK_TICKET_W_MASK		0xffffU		/* Write-side mask. */
-#define CK_TFLOCK_TICKET_WC_TOPMSK	0x8000U		/* Write clear mask for overflow. */
-#define CK_TFLOCK_TICKET_RC_TOPMSK	0x80000000U	/* Read clear mask for overflow. */
+#define CK_TFLOCK_TICKET_RC_INCR 0x10000U      /* Read-side increment. */
+#define CK_TFLOCK_TICKET_WC_INCR 0x1U          /* Write-side increment. */
+#define CK_TFLOCK_TICKET_W_MASK 0xffffU        /* Write-side mask. */
+#define CK_TFLOCK_TICKET_WC_TOPMSK 0x8000U     /* Write clear mask for overflow. */
+#define CK_TFLOCK_TICKET_RC_TOPMSK 0x80000000U /* Read clear mask for overflow. */
 
 CK_CC_INLINE static uint32_t
 ck_tflock_ticket_fca_32(uint32_t *target, uint32_t mask, uint32_t delta)
 {
-	uint32_t snapshot = ck_pr_load_32(target);
-	uint32_t goal;
+  uint32_t snapshot = ck_pr_load_32(target);
+  uint32_t goal;
 
-	for (;;) {
-		goal = (snapshot & ~mask) + delta;
-		if (ck_pr_cas_32_value(target, snapshot, goal, &snapshot) == true)
-			break;
+  for (;;) {
+    goal = (snapshot & ~mask) + delta;
+    if (ck_pr_cas_32_value(target, snapshot, goal, &snapshot) == true)
+      break;
 
-		ck_pr_stall();
-	}
-	
-	return snapshot;
+    ck_pr_stall();
+  }
+
+  return snapshot;
 }
 
 CK_CC_INLINE static void
 ck_tflock_ticket_init(struct ck_tflock_ticket *pf)
 {
-
-	pf->request = pf->completion = 0;
-	ck_pr_barrier();
-	return;
+  pf->request = pf->completion = 0;
+  ck_pr_barrier();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_tflock_ticket_write_lock(struct ck_tflock_ticket *lock)
 {
-	uint32_t previous;
+  uint32_t previous;
 
-	previous = ck_tflock_ticket_fca_32(&lock->request, CK_TFLOCK_TICKET_WC_TOPMSK,
-	    CK_TFLOCK_TICKET_WC_INCR);
-	ck_pr_fence_atomic_load();
-	while (ck_pr_load_32(&lock->completion) != previous)
-		ck_pr_stall();
+  previous = ck_tflock_ticket_fca_32(&lock->request, CK_TFLOCK_TICKET_WC_TOPMSK, CK_TFLOCK_TICKET_WC_INCR);
+  ck_pr_fence_atomic_load();
+  while (ck_pr_load_32(&lock->completion) != previous)
+    ck_pr_stall();
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_tflock_ticket_write_unlock(struct ck_tflock_ticket *lock)
 {
-
-	ck_pr_fence_release();
-	ck_tflock_ticket_fca_32(&lock->completion, CK_TFLOCK_TICKET_WC_TOPMSK,
-	    CK_TFLOCK_TICKET_WC_INCR);
-	return;
+  ck_pr_fence_release();
+  ck_tflock_ticket_fca_32(&lock->completion, CK_TFLOCK_TICKET_WC_TOPMSK, CK_TFLOCK_TICKET_WC_INCR);
+  return;
 }
 
 CK_CC_INLINE static void
 ck_tflock_ticket_read_lock(struct ck_tflock_ticket *lock)
 {
-	uint32_t previous;
+  uint32_t previous;
 
-	previous = ck_tflock_ticket_fca_32(&lock->request, CK_TFLOCK_TICKET_RC_TOPMSK,
-	    CK_TFLOCK_TICKET_RC_INCR) & CK_TFLOCK_TICKET_W_MASK;
+  previous =
+    ck_tflock_ticket_fca_32(&lock->request, CK_TFLOCK_TICKET_RC_TOPMSK, CK_TFLOCK_TICKET_RC_INCR) & CK_TFLOCK_TICKET_W_MASK;
 
-	ck_pr_fence_atomic_load();
+  ck_pr_fence_atomic_load();
 
-	while ((ck_pr_load_uint(&lock->completion) & CK_TFLOCK_TICKET_W_MASK) != previous)
-		ck_pr_stall();
+  while ((ck_pr_load_uint(&lock->completion) & CK_TFLOCK_TICKET_W_MASK) != previous)
+    ck_pr_stall();
 
-	ck_pr_fence_acquire();
-	return;
+  ck_pr_fence_acquire();
+  return;
 }
 
 CK_CC_INLINE static void
 ck_tflock_ticket_read_unlock(struct ck_tflock_ticket *lock)
 {
-
-	ck_pr_fence_release();
-	ck_tflock_ticket_fca_32(&lock->completion, CK_TFLOCK_TICKET_RC_TOPMSK,
-	    CK_TFLOCK_TICKET_RC_INCR);
-	return;
+  ck_pr_fence_release();
+  ck_tflock_ticket_fca_32(&lock->completion, CK_TFLOCK_TICKET_RC_TOPMSK, CK_TFLOCK_TICKET_RC_INCR);
+  return;
 }
 
 #endif /* _CK_TFLOCK_TICKET_H */

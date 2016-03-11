@@ -60,7 +60,7 @@ init_buffer_allocators()
 }
 
 int64_t
-MIOBuffer::remove_append(IOBufferReader * r)
+MIOBuffer::remove_append(IOBufferReader *r)
 {
   int64_t l = 0;
   while (r->block) {
@@ -82,7 +82,7 @@ MIOBuffer::remove_append(IOBufferReader * r)
 int64_t
 MIOBuffer::write(const void *abuf, int64_t alen)
 {
-  const char *buf = (const char*)abuf;
+  const char *buf = (const char *)abuf;
   int64_t len = alen;
   while (len) {
     if (!_writer)
@@ -107,14 +107,14 @@ MIOBuffer::write(const void *abuf, int64_t alen)
 
 
 #ifdef WRITE_AND_TRANSFER
-  /*
-   * Same functionality as write but for the one small difference.
-   * The space available in the last block is taken from the original
-   * and this space becomes available to the copy.
-   *
-   */
+/*
+ * Same functionality as write but for the one small difference.
+ * The space available in the last block is taken from the original
+ * and this space becomes available to the copy.
+ *
+ */
 int64_t
-MIOBuffer::write_and_transfer_left_over_space(IOBufferReader * r, int64_t alen, int64_t offset)
+MIOBuffer::write_and_transfer_left_over_space(IOBufferReader *r, int64_t alen, int64_t offset)
 {
   int64_t rval = write(r, alen, offset);
   // reset the end markers of the original so that it cannot
@@ -133,7 +133,7 @@ MIOBuffer::write_and_transfer_left_over_space(IOBufferReader * r, int64_t alen, 
 
 
 int64_t
-MIOBuffer::write(IOBufferReader * r, int64_t alen, int64_t offset)
+MIOBuffer::write(IOBufferReader *r, int64_t alen, int64_t offset)
 {
   int64_t len = alen;
   IOBufferBlock *b = r->block;
@@ -148,7 +148,7 @@ MIOBuffer::write(IOBufferReader * r, int64_t alen, int64_t offset)
       continue;
     }
     int64_t bytes;
-    if (len<0 || len>= max_bytes)
+    if (len < 0 || len >= max_bytes)
       bytes = max_bytes;
     else
       bytes = len;
@@ -172,8 +172,8 @@ MIOBuffer::puts(char *s, int64_t len)
     if (len-- <= 0)
       return -1;
     if (!*pb || *pb == '\n') {
-      int64_t n = (int64_t) (pb - s);
-      memcpy(end(), s, n + 1);  // Upto and including '\n'
+      int64_t n = (int64_t)(pb - s);
+      memcpy(end(), s, n + 1); // Upto and including '\n'
       end()[n + 1] = 0;
       fill(n + 1);
       return n + 1;
@@ -187,7 +187,7 @@ MIOBuffer::puts(char *s, int64_t len)
 int64_t
 IOBufferReader::read(void *ab, int64_t len)
 {
-  char *b = (char*)ab;
+  char *b = (char *)ab;
   int64_t max_bytes = read_avail();
   int64_t bytes = len <= max_bytes ? len : max_bytes;
   int64_t n = bytes;
@@ -221,14 +221,14 @@ IOBufferReader::memchr(char c, int64_t len, int64_t offset)
       continue;
     }
     int64_t bytes;
-    if (len<0 || len>= max_bytes)
+    if (len < 0 || len >= max_bytes)
       bytes = max_bytes;
     else
       bytes = len;
     char *s = b->start() + offset;
-    char *p = (char *) ::memchr(s, c, bytes);
+    char *p = (char *)::memchr(s, c, bytes);
     if (p)
-      return (int64_t) (o - start_offset + p - s);
+      return (int64_t)(o - start_offset + p - s);
     o += bytes;
     len -= bytes;
     b = b->next;
@@ -241,7 +241,7 @@ IOBufferReader::memchr(char c, int64_t len, int64_t offset)
 char *
 IOBufferReader::memcpy(const void *ap, int64_t len, int64_t offset)
 {
-  char *p = (char*)ap;
+  char *p = (char *)ap;
   IOBufferBlock *b = block;
   offset += start_offset;
 
@@ -254,7 +254,7 @@ IOBufferReader::memcpy(const void *ap, int64_t len, int64_t offset)
       continue;
     }
     int64_t bytes;
-    if (len<0 || len>= max_bytes)
+    if (len < 0 || len >= max_bytes)
       bytes = max_bytes;
     else
       bytes = len;

@@ -43,20 +43,16 @@
  * from faster but less robust implementations.
  */
 #define CK_SPINLOCK_INITIALIZER CK_SPINLOCK_FAS_INITIALIZER
-#define ck_spinlock_t		ck_spinlock_fas_t
-#define ck_spinlock_init(x)	ck_spinlock_fas_init(x)
-#define ck_spinlock_lock(x)	ck_spinlock_fas_lock(x)
-#define ck_spinlock_lock_eb(x)	ck_spinlock_fas_lock_eb(x)
-#define ck_spinlock_unlock(x)	ck_spinlock_fas_unlock(x)
-#define ck_spinlock_locked(x)	ck_spinlock_fas_locked(x)
-#define ck_spinlock_trylock(x)	ck_spinlock_fas_trylock(x)
+#define ck_spinlock_t ck_spinlock_fas_t
+#define ck_spinlock_init(x) ck_spinlock_fas_init(x)
+#define ck_spinlock_lock(x) ck_spinlock_fas_lock(x)
+#define ck_spinlock_lock_eb(x) ck_spinlock_fas_lock_eb(x)
+#define ck_spinlock_unlock(x) ck_spinlock_fas_unlock(x)
+#define ck_spinlock_locked(x) ck_spinlock_fas_locked(x)
+#define ck_spinlock_trylock(x) ck_spinlock_fas_trylock(x)
 
-CK_ELIDE_PROTOTYPE(ck_spinlock, ck_spinlock_t,
-    ck_spinlock_locked, ck_spinlock_lock,
-    ck_spinlock_locked, ck_spinlock_unlock)
+CK_ELIDE_PROTOTYPE(ck_spinlock, ck_spinlock_t, ck_spinlock_locked, ck_spinlock_lock, ck_spinlock_locked, ck_spinlock_unlock)
 
-CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock, ck_spinlock_t,
-    ck_spinlock_locked, ck_spinlock_trylock)
+CK_ELIDE_TRYLOCK_PROTOTYPE(ck_spinlock, ck_spinlock_t, ck_spinlock_locked, ck_spinlock_trylock)
 
 #endif /* _CK_SPINLOCK_H */
-

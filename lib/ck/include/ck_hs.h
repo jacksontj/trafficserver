@@ -39,31 +39,31 @@
  * Indicates a single-writer many-reader workload. Mutually
  * exclusive with CK_HS_MODE_MPMC
  */
-#define CK_HS_MODE_SPMC		1
+#define CK_HS_MODE_SPMC 1
 
 /*
  * Indicates that values to be stored are not pointers but
  * values. Allows for full precision. Mutually exclusive
  * with CK_HS_MODE_OBJECT.
  */
-#define CK_HS_MODE_DIRECT	2
+#define CK_HS_MODE_DIRECT 2
 
-/* 
+/*
  * Indicates that the values to be stored are pointers.
  * Allows for space optimizations in the presence of pointer
  * packing. Mutually exclusive with CK_HS_MODE_DIRECT.
  */
-#define CK_HS_MODE_OBJECT	8
+#define CK_HS_MODE_OBJECT 8
 
 /*
  * Indicates a delete-heavy workload. This will reduce the
  * need for garbage collection at the cost of approximately
  * 12% to 20% increased memory usage.
  */
-#define CK_HS_MODE_DELETE	16
+#define CK_HS_MODE_DELETE 16
 
 /* Currently unsupported. */
-#define CK_HS_MODE_MPMC    (void)
+#define CK_HS_MODE_MPMC (void)
 
 /*
  * Hash callback function.
@@ -82,38 +82,39 @@ typedef bool ck_hs_compare_cb_t(const void *, const void *);
 
 struct ck_hs_map;
 struct ck_hs {
-	struct ck_malloc *m;
-	struct ck_hs_map *map;
-	unsigned int mode;
-	unsigned long seed;
-	ck_hs_hash_cb_t *hf;
-	ck_hs_compare_cb_t *compare;
+  struct ck_malloc *m;
+  struct ck_hs_map *map;
+  unsigned int mode;
+  unsigned long seed;
+  ck_hs_hash_cb_t *hf;
+  ck_hs_compare_cb_t *compare;
 };
 typedef struct ck_hs ck_hs_t;
 
 struct ck_hs_stat {
-	unsigned long tombstones;
-	unsigned long n_entries;
-	unsigned int probe_maximum;
+  unsigned long tombstones;
+  unsigned long n_entries;
+  unsigned int probe_maximum;
 };
 
 struct ck_hs_iterator {
-	void **cursor;
-	unsigned long offset;
+  void **cursor;
+  unsigned long offset;
 };
 typedef struct ck_hs_iterator ck_hs_iterator_t;
 
-#define CK_HS_ITERATOR_INITIALIZER { NULL, 0 }
+#define CK_HS_ITERATOR_INITIALIZER \
+  {                                \
+    NULL, 0                        \
+  }
 
 /* Convenience wrapper to table hash function. */
 #define CK_HS_HASH(T, F, K) F((K), (T)->seed)
 
 void ck_hs_iterator_init(ck_hs_iterator_t *);
 bool ck_hs_next(ck_hs_t *, ck_hs_iterator_t *, void **);
-bool ck_hs_move(ck_hs_t *, ck_hs_t *, ck_hs_hash_cb_t *,
-    ck_hs_compare_cb_t *, struct ck_malloc *);
-bool ck_hs_init(ck_hs_t *, unsigned int, ck_hs_hash_cb_t *,
-    ck_hs_compare_cb_t *, struct ck_malloc *, unsigned long, unsigned long);
+bool ck_hs_move(ck_hs_t *, ck_hs_t *, ck_hs_hash_cb_t *, ck_hs_compare_cb_t *, struct ck_malloc *);
+bool ck_hs_init(ck_hs_t *, unsigned int, ck_hs_hash_cb_t *, ck_hs_compare_cb_t *, struct ck_malloc *, unsigned long, unsigned long);
 void ck_hs_destroy(ck_hs_t *);
 void *ck_hs_get(ck_hs_t *, unsigned long, const void *);
 bool ck_hs_put(ck_hs_t *, unsigned long, const void *);
@@ -130,4 +131,3 @@ bool ck_hs_reset_size(ck_hs_t *, unsigned long);
 void ck_hs_stat(ck_hs_t *, struct ck_hs_stat *);
 
 #endif /* _CK_HS_H */
-

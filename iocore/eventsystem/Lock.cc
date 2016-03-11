@@ -38,46 +38,44 @@ ClassAllocator<ProxyMutex> mutexAllocator("mutexAllocator");
 #include "Diags.h"
 #endif
 
-#ifdef DEBUG  // debug build needs lock_* functions
+#ifdef DEBUG // debug build needs lock_* functions
 #undef INK_NO_LOCKS
 #endif
 
 void
 lock_waiting(const char *file, int line, const char *handler)
 {
-  (void) file;
-  (void) line;
-  (void) handler;
+  (void)file;
+  (void)line;
+  (void)handler;
 #ifdef ERROR_CONFIG_TAG_LOCKS
   if (is_diags_on("locks"))
-    fprintf(stderr, "WARNING: waiting on lock %s:%d for %s\n",
-            file ? file : "UNKNOWN", line, handler ? handler : "UNKNOWN");
+    fprintf(stderr, "WARNING: waiting on lock %s:%d for %s\n", file ? file : "UNKNOWN", line, handler ? handler : "UNKNOWN");
 #endif
 }
 
 void
 lock_holding(const char *file, int line, const char *handler)
 {
-  (void) file;
-  (void) line;
-  (void) handler;
+  (void)file;
+  (void)line;
+  (void)handler;
 #ifdef ERROR_CONFIG_TAG_LOCKS
   if (is_diags_on("locks"))
-    fprintf(stderr, "WARNING: holding lock %s:%d too long for %s\n",
-            file ? file : "UNKNOWN", line, handler ? handler : "UNKNOWN");
+    fprintf(stderr, "WARNING: holding lock %s:%d too long for %s\n", file ? file : "UNKNOWN", line, handler ? handler : "UNKNOWN");
 #endif
 }
 
 void
 lock_taken(const char *file, int line, const char *handler)
 {
-  (void) file;
-  (void) line;
-  (void) handler;
+  (void)file;
+  (void)line;
+  (void)handler;
 #ifdef ERROR_CONFIG_TAG_LOCKS
   if (is_diags_on("locks"))
-    fprintf(stderr, "WARNING: lock %s:%d taken too many times for %s\n",
-            file ? file : "UNKNOWN", line, handler ? handler : "UNKNOWN");
+    fprintf(stderr, "WARNING: lock %s:%d taken too many times for %s\n", file ? file : "UNKNOWN", line,
+            handler ? handler : "UNKNOWN");
 #endif
 }
 
@@ -88,25 +86,20 @@ ProxyMutex::print_lock_stats(int flag)
   if (flag) {
     if (total_acquires < 10)
       return;
-    printf("Lock Stats (Dying):successful %d (%.2f%%), unsuccessful %d (%.2f%%) blocking %d \n",
-           successful_nonblocking_acquires,
-           (nonblocking_acquires > 0 ?
-            successful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0),
+    printf("Lock Stats (Dying):successful %d (%.2f%%), unsuccessful %d (%.2f%%) blocking %d \n", successful_nonblocking_acquires,
+           (nonblocking_acquires > 0 ? successful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0),
            unsuccessful_nonblocking_acquires,
-           (nonblocking_acquires > 0 ?
-            unsuccessful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0), blocking_acquires);
+           (nonblocking_acquires > 0 ? unsuccessful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0), blocking_acquires);
     fflush(stdout);
   } else {
     if (!(total_acquires % 100)) {
-      printf("Lock Stats (Alive):successful %d (%.2f%%), unsuccessful %d (%.2f%%) blocking %d \n",
-             successful_nonblocking_acquires,
-             (nonblocking_acquires > 0 ?
-              successful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0),
+      printf("Lock Stats (Alive):successful %d (%.2f%%), unsuccessful %d (%.2f%%) blocking %d \n", successful_nonblocking_acquires,
+             (nonblocking_acquires > 0 ? successful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0),
              unsuccessful_nonblocking_acquires,
-             (nonblocking_acquires > 0 ?
-              unsuccessful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0), blocking_acquires);
+             (nonblocking_acquires > 0 ? unsuccessful_nonblocking_acquires * 100.0 / nonblocking_acquires : 0.0),
+             blocking_acquires);
       fflush(stdout);
     }
   }
 }
-#endif //LOCK_CONTENTION_PROFILING
+#endif // LOCK_CONTENTION_PROFILING

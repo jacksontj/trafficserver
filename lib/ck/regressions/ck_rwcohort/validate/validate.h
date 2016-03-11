@@ -55,155 +55,153 @@ static ck_spinlock_fas_t global_fas_lock = CK_SPINLOCK_FAS_INITIALIZER;
 static void
 ck_spinlock_fas_lock_with_context(ck_spinlock_fas_t *lock, void *context)
 {
-	(void)context;
-	ck_spinlock_fas_lock(lock);
+  (void)context;
+  ck_spinlock_fas_lock(lock);
 }
 
 static void
 ck_spinlock_fas_unlock_with_context(ck_spinlock_fas_t *lock, void *context)
 {
-	(void)context;
-	ck_spinlock_fas_unlock(lock);
+  (void)context;
+  ck_spinlock_fas_unlock(lock);
 }
 
 static bool
 ck_spinlock_fas_locked_with_context(ck_spinlock_fas_t *lock, void *context)
 {
-	(void)context;
-	return ck_spinlock_fas_locked(lock);
+  (void)context;
+  return ck_spinlock_fas_locked(lock);
 }
 
-CK_COHORT_PROTOTYPE(fas_fas,
-	ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context, ck_spinlock_fas_locked_with_context,
-	ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context, ck_spinlock_fas_locked_with_context)
+CK_COHORT_PROTOTYPE(fas_fas, ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context,
+                    ck_spinlock_fas_locked_with_context, ck_spinlock_fas_lock_with_context, ck_spinlock_fas_unlock_with_context,
+                    ck_spinlock_fas_locked_with_context)
 LOCK_PROTOTYPE(fas_fas)
 
-static CK_COHORT_INSTANCE(fas_fas) *cohorts;
+static CK_COHORT_INSTANCE(fas_fas) * cohorts;
 static LOCK_INSTANCE(fas_fas) rw_cohort = LOCK_INITIALIZER;
 static int n_cohorts;
 
 static void *
 thread(void *null CK_CC_UNUSED)
 {
-        int i = ITERATE;
-	unsigned int l;
-	unsigned int core;
-	CK_COHORT_INSTANCE(fas_fas) *cohort;
+  int i = ITERATE;
+  unsigned int l;
+  unsigned int core;
+  CK_COHORT_INSTANCE(fas_fas) * cohort;
 
-	if (aff_iterate_core(&a, &core)) {
-		perror("ERROR: Could not affine thread");
-		exit(EXIT_FAILURE);
-	}
+  if (aff_iterate_core(&a, &core)) {
+    perror("ERROR: Could not affine thread");
+    exit(EXIT_FAILURE);
+  }
 
-	cohort = cohorts + (core / (int)(a.delta)) % n_cohorts;
+  cohort = cohorts + (core / (int)(a.delta)) % n_cohorts;
 
-	while (i--) {
-                WRITE_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		{
-			l = ck_pr_load_uint(&locked);
-			if (l != 0) {
-				ck_error("ERROR [WR:%d]: %u != 0\n", __LINE__, l);
-			}
+  while (i--) {
+    WRITE_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    {
+      l = ck_pr_load_uint(&locked);
+      if (l != 0) {
+        ck_error("ERROR [WR:%d]: %u != 0\n", __LINE__, l);
+      }
 
-			ck_pr_inc_uint(&locked);
-			ck_pr_inc_uint(&locked);
-			ck_pr_inc_uint(&locked);
-			ck_pr_inc_uint(&locked);
-			ck_pr_inc_uint(&locked);
-			ck_pr_inc_uint(&locked);
-			ck_pr_inc_uint(&locked);
-			ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
+      ck_pr_inc_uint(&locked);
 
-			l = ck_pr_load_uint(&locked);
-			if (l != 8) {
-				ck_error("ERROR [WR:%d]: %u != 2\n", __LINE__, l);
-			}
+      l = ck_pr_load_uint(&locked);
+      if (l != 8) {
+        ck_error("ERROR [WR:%d]: %u != 2\n", __LINE__, l);
+      }
 
-			ck_pr_dec_uint(&locked);
-			ck_pr_dec_uint(&locked);
-			ck_pr_dec_uint(&locked);
-			ck_pr_dec_uint(&locked);
-			ck_pr_dec_uint(&locked);
-			ck_pr_dec_uint(&locked);
-			ck_pr_dec_uint(&locked);
-			ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
+      ck_pr_dec_uint(&locked);
 
-			l = ck_pr_load_uint(&locked);
-			if (l != 0) {
-				ck_error("ERROR [WR:%d]: %u != 0\n", __LINE__, l);
-			}
-		}
-		WRITE_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+      l = ck_pr_load_uint(&locked);
+      if (l != 0) {
+        ck_error("ERROR [WR:%d]: %u != 0\n", __LINE__, l);
+      }
+    }
+    WRITE_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
 
-		READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-		{
-			l = ck_pr_load_uint(&locked);
-			if (l != 0) {
-				ck_error("ERROR [RD:%d]: %u != 0\n", __LINE__, l);
-			}
-		}
-		READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
-	}
+    READ_LOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+    {
+      l = ck_pr_load_uint(&locked);
+      if (l != 0) {
+        ck_error("ERROR [RD:%d]: %u != 0\n", __LINE__, l);
+      }
+    }
+    READ_UNLOCK(fas_fas, &rw_cohort, cohort, NULL, NULL);
+  }
 
-	return (NULL);
+  return (NULL);
 }
 
 int
 main(int argc, char *argv[])
 {
-	pthread_t *threads;
-	int threads_per_cohort;
-	ck_spinlock_fas_t *local_lock;
-	int i;
+  pthread_t *threads;
+  int threads_per_cohort;
+  ck_spinlock_fas_t *local_lock;
+  int i;
 
-	if (argc != 4) {
-		ck_error("Usage: validate <number of cohorts> <threads per cohort> <affinity delta>\n");
-	}
+  if (argc != 4) {
+    ck_error("Usage: validate <number of cohorts> <threads per cohort> <affinity delta>\n");
+  }
 
-	n_cohorts = atoi(argv[1]);
-	if (n_cohorts <= 0) {
-		ck_error("ERROR: Number of cohorts must be greater than 0\n");
-	}
+  n_cohorts = atoi(argv[1]);
+  if (n_cohorts <= 0) {
+    ck_error("ERROR: Number of cohorts must be greater than 0\n");
+  }
 
-	threads_per_cohort = atoi(argv[2]);
-	if (threads_per_cohort <= 0) {
-		ck_error("ERROR: Threads per cohort must be greater than 0\n");
-	}
+  threads_per_cohort = atoi(argv[2]);
+  if (threads_per_cohort <= 0) {
+    ck_error("ERROR: Threads per cohort must be greater than 0\n");
+  }
 
-	nthr = n_cohorts * threads_per_cohort;
+  nthr = n_cohorts * threads_per_cohort;
 
-	threads = malloc(sizeof(pthread_t) * nthr);
-	if (threads == NULL) {
-		ck_error("ERROR: Could not allocate thread structures\n");
-	}
+  threads = malloc(sizeof(pthread_t) * nthr);
+  if (threads == NULL) {
+    ck_error("ERROR: Could not allocate thread structures\n");
+  }
 
-	a.delta = atoi(argv[3]);
+  a.delta = atoi(argv[3]);
 
-	fprintf(stderr, "Creating cohorts...");
-	cohorts = malloc(sizeof(CK_COHORT_INSTANCE(fas_fas)) * n_cohorts);
-	if (cohorts == NULL) {
-		ck_error("ERROR: Could not allocate base cohort structures\n");
-	}
-	for (i = 0 ; i < n_cohorts ; i++) {
-		local_lock = malloc(sizeof(ck_spinlock_fas_t));
-		CK_COHORT_INIT(fas_fas, cohorts + i, &global_fas_lock, local_lock,
-		    CK_COHORT_DEFAULT_LOCAL_PASS_LIMIT);
-	}
-	fprintf(stderr, "done\n");
+  fprintf(stderr, "Creating cohorts...");
+  cohorts = malloc(sizeof(CK_COHORT_INSTANCE(fas_fas)) * n_cohorts);
+  if (cohorts == NULL) {
+    ck_error("ERROR: Could not allocate base cohort structures\n");
+  }
+  for (i = 0; i < n_cohorts; i++) {
+    local_lock = malloc(sizeof(ck_spinlock_fas_t));
+    CK_COHORT_INIT(fas_fas, cohorts + i, &global_fas_lock, local_lock, CK_COHORT_DEFAULT_LOCAL_PASS_LIMIT);
+  }
+  fprintf(stderr, "done\n");
 
-	fprintf(stderr, "Creating threads...");
-	for (i = 0; i < nthr; i++) {
-		if (pthread_create(&threads[i], NULL, thread, NULL)) {
-			ck_error("ERROR: Could not create thread %d\n", i);
-		}
-	}
-	fprintf(stderr, "done\n");
+  fprintf(stderr, "Creating threads...");
+  for (i = 0; i < nthr; i++) {
+    if (pthread_create(&threads[i], NULL, thread, NULL)) {
+      ck_error("ERROR: Could not create thread %d\n", i);
+    }
+  }
+  fprintf(stderr, "done\n");
 
-	fprintf(stderr, "Waiting for threads to finish correctness regression...");
-	for (i = 0; i < nthr; i++)
-		pthread_join(threads[i], NULL);
-	fprintf(stderr, "done (passed)\n");
+  fprintf(stderr, "Waiting for threads to finish correctness regression...");
+  for (i = 0; i < nthr; i++)
+    pthread_join(threads[i], NULL);
+  fprintf(stderr, "done (passed)\n");
 
-	return (0);
+  return (0);
 }
-
