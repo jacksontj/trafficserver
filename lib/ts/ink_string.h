@@ -436,7 +436,7 @@ inline int
 ink_fast_ltoa(int64_t val, char *buf, int buf_len)
 {
   if ((val < 0) || (val > 99999)) {
-    int ret = snprintf(buf, buf_len, "%" PRId64 "", val);
+    int ret = snprintf(buf, buf_len, "%d", val);
 
     return (ret >= 0 ? ret : 0);
   }

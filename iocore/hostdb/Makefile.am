@@ -28,6 +28,8 @@ AM_CPPFLAGS = \
 
 EXTRA_DIST = I_HostDB.h
 
+TESTS = $(check_PROGRAMS)
+
 noinst_LIBRARIES = libinkhostdb.a
 
 libinkhostdb_a_SOURCES = \
@@ -38,7 +40,46 @@ libinkhostdb_a_SOURCES = \
   MultiCache.cc \
   P_HostDB.h \
   P_HostDBProcessor.h \
-  P_MultiCache.h
+  P_MultiCache.h 
+  
+check_PROGRAMS = test_foo
+
+test_LD_FLAGS = \
+  @EXTRA_CXX_LDFLAGS@ \
+  @LIBTOOL_LINK_FLAGS@ \
+  @OPENSSL_LDFLAGS@
+
+test_CPP_FLAGS = \
+  $(AM_CPPFLAGS) \
+  $(iocore_include_dirs) \
+  -I$(top_srcdir)/proxy/api/ts \
+  -I$(top_srcdir)/proxy/api \
+  -I$(top_srcdir)/proxy \
+  -I$(top_srcdir)/proxy/hdrs \
+  -I$(top_srcdir)/proxy/http \
+  -I$(top_srcdir)/proxy/logging \
+  -I$(top_srcdir)/mgmt \
+  -I$(top_srcdir)/mgmt/utils \
+  -I$(top_srcdir)/lib/ts \
+  @OPENSSL_INCLUDES@
+
+test_LD_ADD = \
+  libinkhostdb.a \
+  $(top_builddir)/iocore/eventsystem/libinkevent.a \
+  $(top_builddir)/lib/records/librecords_p.a \
+  $(top_builddir)/mgmt/libmgmt_p.la \
+  $(top_builddir)/iocore/hostdb/libinkhostdb.a \
+  $(top_builddir)/iocore/dns/libinkdns.a \
+  $(top_builddir)/iocore/cache/libinkcache.a \
+  $(top_builddir)/lib/ts/libtsutil.la \
+  #$(top_builddir)/proxy/shared/libUglyLogStubs.a \
+  @LIBTCL@ @HWLOC_LIBS@
+  
+test_foo_SOURCES = \
+	test_foo.cc
+test_foo_CPPFLAGS = $(test_CPP_FLAGS)
+test_foo_LDFLAGS = $(test_LD_FLAGS)
+test_foo_LDADD = $(test_LD_ADD)
 
 #test_UNUSED_SOURCES = \
 #  test_I_HostDB.cc \
