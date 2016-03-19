@@ -25,6 +25,17 @@
 
   MultiCache.cc
 
+	"MultiCache" is called so, not because of the intention to be reusable for multiple structures,
+	but rather that it has effectively two caches (one statically allocated based on the struct, and
+	a second one that is heap managed GCd memory).
+
+	Static allocs (block)
+		These are stored in a number of layers (hard coded to 3) for lookups. This allows us to control the
+		size of the array that it'll do linear search over.
+
+	Dynamic allocs (alloc)
+		This will allocate the amount of space you have requested, but there are no gaurantees about
+		when the memory will be reclaimed/re-used.
 
  ****************************************************************************/
 

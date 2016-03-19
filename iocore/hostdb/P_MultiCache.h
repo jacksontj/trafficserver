@@ -622,28 +622,23 @@ template <class C>
 inline C *
 MultiCache<C>::lookup_block(uint64_t folded_md5, unsigned int level)
 {
-  C *b = cache_bucket(folded_md5, 0);
-  uint64_t tag = make_tag(folded_md5);
-  int i = 0;
-  // Level 0
-  for (i = 0; i < elements[0]; i++)
-    if (tag == b[i].tag())
-      return &b[i];
-  if (level <= 0)
-    return NULL;
-  // Level 1
-  b = cache_bucket(folded_md5, 1);
-  for (i = 0; i < elements[1]; i++)
-    if (tag == b[i].tag())
-      return &b[i];
-  if (level <= 1)
-    return NULL;
-  // Level 2
-  b = cache_bucket(folded_md5, 2);
-  for (i = 0; i < elements[2]; i++)
-    if (tag == b[i].tag())
-      return &b[i];
-  return NULL;
+	uint64_t tag = make_tag(folded_md5);
+	// level cannot be larger than the maximum number of levels, if it is lets cap it.
+	if (level > MULTI_CACHE_MAX_LEVELS) {
+		level = MULTI_CACHE_MAX_LEVELS;
+	}
+	// For each level of cache, lets look for our item
+	for (int curr_level = 0; curr_level < level; curr_level++){
+	  C *b = cache_bucket(folded_md5, curr_level);
+
+      // Level curr_level
+	  for (int i = 0; i < elements[curr_level]; i++){
+		if (tag == b[i].tag()){
+		  return &b[i];
+		}
+	  }
+	}
+	return NULL;
 }
 
 template <class C>
