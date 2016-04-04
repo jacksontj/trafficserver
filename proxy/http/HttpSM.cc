@@ -1980,9 +1980,11 @@ HttpSM::state_send_server_request_header(int event, void *data)
 }
 
 void
-HttpSM::process_srv_info(HostDBInfo *r)
+HttpSM::process_srv_info(RefCountCacheItem<HostDBInfo> *entry)
 {
   DebugSM("dns_srv", "beginning process_srv_info");
+  t_state.hostdb_entry = new Ptr<RefCountCacheItem<HostDBInfo>>(entry);
+  HostDBInfo *r = entry ? entry->item(): NULL;
 
   /* we didnt get any SRV records, continue w normal lookup */
   if (!r || !r->is_srv || !r->round_robin) {
@@ -2003,7 +2005,6 @@ HttpSM::process_srv_info(HostDBInfo *r)
       t_state.srv_lookup = false;
       DebugSM("dns_srv", "SRV records empty for %s", t_state.dns_info.lookup_name);
     } else {
-      ink_assert(r->md5_high == srv->md5_high && r->md5_low == srv->md5_low && r->md5_low_low == srv->md5_low_low);
       t_state.dns_info.srv_lookup_success = true;
       t_state.dns_info.srv_port = srv->data.srv.srv_port;
       t_state.dns_info.srv_app = srv->app;
@@ -2016,8 +2017,11 @@ HttpSM::process_srv_info(HostDBInfo *r)
 }
 
 void
-HttpSM::process_hostdb_info(HostDBInfo *r)
+HttpSM::process_hostdb_info(RefCountCacheItem<HostDBInfo> *entry)
 {
+  // Increment the refcount to our item, since we are pointing at it
+  t_state.hostdb_entry = new Ptr<RefCountCacheItem<HostDBInfo>>(entry);
+  HostDBInfo *r = entry ? entry->item(): NULL;
   if (r && !r->is_failed()) {
     ink_time_t now = ink_cluster_time();
     HostDBInfo *ret = NULL;
@@ -2132,12 +2136,12 @@ HttpSM::state_hostdb_lookup(int event, void *data)
   switch (event) {
   case EVENT_HOST_DB_LOOKUP:
     pending_action = NULL;
-    process_hostdb_info((HostDBInfo *)data);
+    process_hostdb_info((RefCountCacheItem<HostDBInfo> *)data);
     call_transact_and_set_next_state(NULL);
     break;
   case EVENT_SRV_LOOKUP: {
     pending_action = NULL;
-    process_srv_info((HostDBInfo *)data);
+    process_srv_info((RefCountCacheItem<HostDBInfo> *)data);
 
     char *host_name = t_state.dns_info.srv_lookup_success ? t_state.dns_info.srv_hostname : t_state.dns_info.lookup_name;
     HostDBProcessor::Options opt;
@@ -3870,7 +3874,7 @@ HttpSM::state_srv_lookup(int event, void *data)
   switch (event) {
   case EVENT_SRV_LOOKUP:
     pending_action = NULL;
-    process_srv_info((HostDBInfo *)data);
+    process_srv_info((RefCountCacheItem<HostDBInfo> *)data);
     break;
   case EVENT_SRV_IP_REMOVED:
     ink_assert(!"Unexpected SRV event from HostDB. What up, Eric?");

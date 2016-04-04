@@ -143,11 +143,6 @@ HOSTDB_CLIENT_IP_HASH(sockaddr const *lhs, sockaddr const *rhs)
 //#define TEST(_x) _x
 #define TEST(_x)
 
-
-#ifdef _HOSTDB_CC_
-template struct MultiCache<HostDBInfo>;
-#endif /* _HOSTDB_CC_ */
-
 struct ClusterMachine;
 struct HostEnt;
 struct ClusterConfiguration;
@@ -206,30 +201,20 @@ struct RefCountedHostsFileMap : public RefCountObj {
 //
 // HostDBCache (Private)
 //
-struct HostDBCache : public MultiCache<HostDBInfo> {
-  int rebuild_callout(HostDBInfo *e, RebuildMC &r);
+struct HostDBCache {
   int start(int flags = 0);
-  MultiCacheBase *
-  dup()
-  {
-    return new HostDBCache;
-  }
-
-  // This accounts for an average of 2 HostDBInfo per DNS cache (for round-robin etc.)
-  // In addition, we can do a padding for additional SRV records storage.
-  virtual size_t
-  estimated_heap_bytes_per_entry() const
-  {
-    return sizeof(HostDBInfo) * 2 + 512 * hostdb_srv_enabled;
-  }
 
   // Map to contain all of the host file overrides, initialize it to empty
   Ptr<RefCountedHostsFileMap> hosts_file_ptr;
   // Double buffer the hosts file becase it's small and it solves dangling reference problems.
   Ptr<RefCountedHostsFileMap> prev_hosts_file_ptr;
+  // TODO: cleanup
+  RefCountCache<HostDBInfo> *newCache;
 
-  Queue<HostDBContinuation, Continuation::Link_link> pending_dns[MULTI_CACHE_PARTITIONS];
+  // TODO configurable number of items in the cache
+  Queue<HostDBContinuation, Continuation::Link_link> *pending_dns;
   Queue<HostDBContinuation, Continuation::Link_link> &pending_dns_for_hash(INK_MD5 &md5);
+  Queue<HostDBContinuation, Continuation::Link_link> *remoteHostDBQueue;
   HostDBCache();
 };
 
@@ -507,9 +492,9 @@ struct HostDBContinuation : public Continuation {
   {
     return md5.db_mark == HOSTDB_MARK_SRV;
   }
-  HostDBInfo *lookup_done(IpAddr const &ip, char const *aname, bool round_robin, unsigned int attl, SRVHosts *s = NULL);
+  RefCountCacheItem<HostDBInfo> *lookup_done(IpAddr const &ip, char const *aname, bool round_robin, unsigned int attl, SRVHosts *s = NULL, RefCountCacheItem<HostDBInfo> *cacheItem = NULL);
   bool do_get_response(Event *e);
-  void do_put_response(ClusterMachine *m, HostDBInfo *r, Continuation *cont);
+  void do_put_response(ClusterMachine *m, RefCountCacheItem<HostDBInfo> *r, Continuation *cont);
   int failed_cluster_request(Event *e);
   int key_partition();
   void remove_trigger_pending_dns();
@@ -517,7 +502,7 @@ struct HostDBContinuation : public Continuation {
 
   ClusterMachine *master_machine(ClusterConfiguration *cc);
 
-  HostDBInfo *insert(unsigned int attl);
+  RefCountCacheItem<HostDBInfo> *insert(unsigned int attl);
 
   /** Optional values for @c init.
    */
@@ -564,13 +549,13 @@ is_dotted_form_hostname(const char *c)
 inline Queue<HostDBContinuation> &
 HostDBCache::pending_dns_for_hash(INK_MD5 &md5)
 {
-  return pending_dns[partition_of_bucket((int)(fold_md5(md5) % hostDB.buckets))];
+  return pending_dns[this->newCache->partitionForKey(md5.fold())];
 }
 
 inline int
 HostDBContinuation::key_partition()
 {
-  return hostDB.partition_of_bucket(fold_md5(md5.hash) % hostDB.buckets);
+	return hostDB.newCache->partitionForKey(md5.hash.fold());
 }
 
 #endif /* _P_HostDBProcessor_h_ */

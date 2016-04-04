@@ -31,6 +31,7 @@
 #include "ts/ink_resolver.h"
 #include "I_EventSystem.h"
 #include "SRV.h"
+#include "P_RefCountCache.h"
 
 // Event returned on a lookup
 #define EVENT_HOST_DB_LOOKUP (HOSTDB_EVENT_EVENTS_START + 0)
@@ -41,6 +42,7 @@
 #define EVENT_SRV_IP_REMOVED (SRV_EVENT_EVENTS_START + 1)
 #define EVENT_SRV_GET_RESPONSE (SRV_EVENT_EVENTS_START + 2)
 
+// TODO: make configurable
 #define HOST_DB_MAX_ROUND_ROBIN_INFO 16
 
 #define HOST_DB_SRV_PREFIX "_http._tcp."
@@ -126,7 +128,7 @@ union HostDBApplicationInfo {
   };
 
   struct application_data_rr {
-    int offset;
+    unsigned int offset;
   } rr;
 };
 
@@ -144,6 +146,7 @@ struct HostDBInfo {
   /** Internal IP address data.
       This is at least large enough to hold an IPv6 address.
   */
+  uint64_t key;
   sockaddr *
   ip()
   {
@@ -168,13 +171,6 @@ struct HostDBInfo {
     return 0 != round_robin_elt;
   }
   HostDBRoundRobin *rr();
-
-  /** Indicate that the HostDBInfo is BAD and should be deleted. */
-  void
-  is_bad()
-  {
-    full = 0;
-  }
 
   /**
     Application specific data. NOTE: We need an integral number of these
@@ -246,33 +242,22 @@ struct HostDBInfo {
 
   union {
     IpEndpoint ip;       ///< IP address / port data.
-    int hostname_offset; ///< Some hostname thing.
+    unsigned int hostname_offset; ///< Some hostname thing.
     SRVInfo srv;
   } data;
 
-  int hostname_offset; // always maintain a permanent copy of the hostname for non-rev dns records.
+  unsigned int hostname_offset; // always maintain a permanent copy of the hostname for non-rev dns records.
 
   unsigned int ip_timestamp;
   // limited to HOST_DB_MAX_TTL (0x1FFFFF, 24 days)
   // if this is 0 then no timeout.
   unsigned int ip_timeout_interval;
 
-  // Make sure we only have 8 bits of these flags before the @a md5_low_low
-  unsigned int full : 1;
-  unsigned int backed : 1; // duplicated in lower level
-  unsigned int deleted : 1;
-  unsigned int hits : 3;
-
   unsigned int is_srv : 1;
   unsigned int reverse_dns : 1;
 
-  unsigned int md5_low_low : 24;
-  unsigned int md5_low;
-
   unsigned int round_robin : 1;     // This is the root of a round robin block
   unsigned int round_robin_elt : 1; // This is an address in a round robin block
-
-  uint64_t md5_high;
 
   /*
    * Given the current time `now` and the fail_window, determine if this real is alive
@@ -314,70 +299,6 @@ struct HostDBInfo {
     else
       ats_ip_invalidate(ip());
   }
-
-  void
-  set_deleted()
-  {
-    deleted = 1;
-  }
-
-  bool
-  is_deleted() const
-  {
-    return deleted;
-  }
-
-  bool
-  is_empty() const
-  {
-    return !full;
-  }
-
-  void
-  set_empty()
-  {
-    full = 0;
-    md5_high = 0;
-    md5_low = 0;
-    md5_low_low = 0;
-  }
-
-  void
-  set_full(uint64_t folded_md5, int buckets)
-  {
-    uint64_t ttag = folded_md5 / buckets;
-
-    if (!ttag)
-      ttag = 1;
-    md5_low_low = (unsigned int)ttag;
-    md5_low = (unsigned int)(ttag >> 24);
-    full = 1;
-  }
-
-  void
-  reset()
-  {
-    ats_ip_invalidate(ip());
-    app.allotment.application1 = 0;
-    app.allotment.application2 = 0;
-    backed = 0;
-    deleted = 0;
-    hits = 0;
-    round_robin = 0;
-    reverse_dns = 0;
-    is_srv = 0;
-  }
-
-  uint64_t
-  tag()
-  {
-    uint64_t f = md5_low;
-    return (f << 24) + md5_low_low;
-  }
-
-  bool match(INK_MD5 &, int, int);
-  int heap_size();
-  int *heap_offset_ptr();
 };
 
 
@@ -389,7 +310,6 @@ struct HostDBRoundRobin {
   short good;
 
   unsigned short current;
-  unsigned short length;
   ink_time_t timed_rr_ctime;
 
   HostDBInfo info[];
@@ -417,15 +337,15 @@ struct HostDBRoundRobin {
   HostDBInfo *select_next(sockaddr const *addr);
   HostDBInfo *select_best_http(sockaddr const *client_ip, ink_time_t now, int32_t fail_window);
   HostDBInfo *select_best_srv(char *target, InkRand *rand, ink_time_t now, int32_t fail_window);
-  HostDBRoundRobin() : rrcount(0), good(0), current(0), length(0), timed_rr_ctime(0) {}
+  HostDBRoundRobin() : rrcount(0), good(0), current(0), timed_rr_ctime(0) {}
 };
 
 struct HostDBCache;
 
 // Prototype for inline completion functionf or
 //  getbyname_imm()
-typedef void (Continuation::*process_hostdb_info_pfn)(HostDBInfo *r);
-typedef void (Continuation::*process_srv_info_pfn)(HostDBInfo *r);
+typedef void (Continuation::*process_hostdb_info_pfn)(RefCountCacheItem<HostDBInfo> *r);
+typedef void (Continuation::*process_srv_info_pfn)(RefCountCacheItem<HostDBInfo> *r);
 
 Action *iterate(Continuation *cont);
 

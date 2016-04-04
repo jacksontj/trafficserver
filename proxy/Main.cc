@@ -699,7 +699,7 @@ cmd_clear(char *cmd)
       Note("unable to open Host Database, CLEAR failed");
       return CMD_FAILED;
     }
-    hostDBProcessor.cache()->reset();
+    hostDBProcessor.cache()->newCache->clear();
     if (c_hdb)
       return CMD_OK;
   }

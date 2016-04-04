@@ -842,6 +842,7 @@ public:
     int orig_scheme;     // pre-mapped scheme
     int method;
     int cause_of_death_errno; // in
+    Ptr<RefCountCacheItem<HostDBInfo>> *hostdb_entry;  // Pointer to the entry we are referencing in hostdb-- to keep our ref
     HostDBInfo host_db_info;  // in
 
     ink_time_t client_request_time;    // internal
@@ -1033,6 +1034,10 @@ public:
       delete[] ranges;
       ranges = NULL;
       range_setup = RANGE_NONE;
+
+      if (this->hostdb_entry) {
+    	  delete this->hostdb_entry;
+      }
       return;
     }
 
