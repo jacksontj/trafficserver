@@ -490,21 +490,6 @@ struct HostDBProcessor : public Processor {
     return getby(cont, NULL, 0, aip, false, HOST_RES_NONE, 0);
   }
 
-#if 0
-  /**
-    If you were unable to connect to an IP address associated with a
-    particular hostname, call this function and that IP address will
-    be marked "bad" and if the host is using round-robin DNS, next time
-    you will get a different IP address.
-
-  */
-  Action *failed_connect_on_ip_for_name(
-    Continuation * cont,
-    sockaddr const* aip,
-    const char *hostname, int len = 0
-  );
-#endif
-
   /** Set the application information (fire-and-forget). */
   void
   setbyname_appinfo(char *hostname, int len, int port, HostDBApplicationInfo *app)
