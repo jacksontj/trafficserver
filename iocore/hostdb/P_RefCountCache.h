@@ -3,11 +3,14 @@
 
 #include "I_EventSystem.h"
 
+#include <ts/Map.h>
+#include <ts/List.h>
+
 #include <cstdint>
+// TODO: no vector?
 #include <vector>
 #include <unistd.h>
 #include <string.h>
-#include <unordered_map>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -57,6 +60,8 @@ public:
   unsigned int size;  // how much space does this guy get
   int64_t iobuffer_index;
   char *iobuf;
+
+
 };
 
 // Template to the particular class, so we can caste the item ptr correctly
@@ -69,6 +74,32 @@ public:
 template <class C> C* RefCountCacheItem<C>::item() {
 	return (C *) this->iobuf;
 }
+
+// Layer of inderection for the hashmap-- since it needs lots of things inside of it
+class RefCountCacheHashingValue {
+public:
+  Ptr<RefCountCacheItemBase> item;
+  LINK(RefCountCacheHashingValue, item_link);
+  RefCountCacheHashingValue(Ptr<RefCountCacheItemBase> i): item(i) {};
+};
+
+// TODO: template?
+struct RefCountCacheHashing {
+	typedef uint64_t ID;
+	typedef uint64_t const Key;
+	typedef RefCountCacheHashingValue Value;
+	typedef DList(RefCountCacheHashingValue, item_link) ListHead;
+
+	static ID hash(Key key) {
+		return key;
+	}
+	static Key key(Value const *value) {
+		return value->item->key;
+	}
+	static bool equal(Key lhs, Key rhs) {
+		return lhs == rhs;
+	}
+};
 
 
 // The RefCountCachePartition is simply a map of key -> Ptr<RefCountCacheItem<YourClass>>
@@ -85,8 +116,10 @@ template <class C> class RefCountCachePartition {
     int numItems();
     void copy(std::vector<Ptr<RefCountCacheItemBase>> *items);
 
-    typedef typename std::unordered_map<uint64_t, Ptr<RefCountCacheItem<C>>>::iterator iteratortype;
-    std::unordered_map<uint64_t, Ptr<RefCountCacheItem<C>>>* getMap();
+    typedef typename TSHashTable<RefCountCacheHashing>::iterator iteratortype;
+    typedef typename TSHashTable<RefCountCacheHashing>::self hashtype;
+    typedef typename TSHashTable<RefCountCacheHashing>::Location locationtype;
+    TSHashTable<RefCountCacheHashing>* getMap();
 
     PtrMutex lock;  // Lock
 
@@ -97,7 +130,7 @@ template <class C> class RefCountCachePartition {
     int size;
     int items;
 
-    std::unordered_map<uint64_t, Ptr<RefCountCacheItem<C>>> itemMap;
+    hashtype itemMap;
 };
 
 
@@ -120,35 +153,37 @@ template <class C> RefCountCacheItem<C>* RefCountCachePartition<C>::alloc(uint64
     this->del(key);
     // TODO: check limits, evict if necessary
 
+    // TODO: either put the RefCountCacheItem on the same iobuf, or move this
+    // to a class allocator
     RefCountCacheItem<C>* item = new RefCountCacheItem<C>(key, size);
 
     // Add our entry to the map
-    this->itemMap[key] = make_ptr(item);
+    RefCountCacheHashingValue *val = new RefCountCacheHashingValue(make_ptr((RefCountCacheItemBase*) item));
+    this->itemMap.insert(val);
 
     return item;
 }
 
 
 template <class C> Ptr<RefCountCacheItem<C> > RefCountCachePartition<C>::get(uint64_t key) {
-	RefCountCachePartition<C>::iteratortype i = this->itemMap.find(key);
-
-    if (i == this->itemMap.end() ) {
-      return Ptr<RefCountCacheItem<C> >(NULL);
-    } else {
+  locationtype l = this->itemMap.find(key);
+    if (l.isValid()) {
       // found
-      return make_ptr(i->second.m_ptr);
+      return make_ptr((RefCountCacheItem<C>*) l->item.m_ptr);
+    } else {
+      return Ptr<RefCountCacheItem<C>>(NULL);
     }
 }
 
 
 template <class C> void RefCountCachePartition<C>::del(uint64_t key) {
-  RefCountCachePartition<C>::iteratortype i = this->itemMap.find(key);
+  locationtype l = this->itemMap.find(key);
 
-  if (i != this->itemMap.end() ) {
-    // found, lets remove it
-    this->itemMap.erase(i);
-    // Remove our refcount by deleting it
-    delete i->second;
+  if (l.isValid()) {
+    // found, lets remove it from the map
+    this->itemMap.remove(l);
+    // Remove our refcount by deleting our Ptr
+    delete l.m_value;
   }
 }
 
@@ -163,18 +198,18 @@ template <class C> void RefCountCachePartition<C>::clear() {
 
 
 template <class C> int RefCountCachePartition<C>::numItems() {
-  return this->itemMap.size();
+  return this->itemMap.count();
 }
 
 
 template <class C> void RefCountCachePartition<C>::copy(std::vector<Ptr<RefCountCacheItemBase>> *items){
   for (RefCountCachePartition<C>::iteratortype i = this->itemMap.begin(); i != this->itemMap.end(); ++i) {
-    items->push_back(make_ptr((RefCountCacheItemBase *) i->second));
+    items->push_back(make_ptr((RefCountCacheItemBase *) i->item.m_ptr));
   }
 }
 
 // TODO: pass an iterator or something? Seems not good to pass a pointer to a member
-template <class C> std::unordered_map<uint64_t, Ptr<RefCountCacheItem<C>>>* RefCountCachePartition<C>::getMap(){
+template <class C> TSHashTable<RefCountCacheHashing>* RefCountCachePartition<C>::getMap(){
     return &this->itemMap;
 }
 
@@ -262,7 +297,7 @@ template <class C> class RefCountCache: public RefCountCacheBase {
         virtual ProxyMutex* lock_for_partition(int pnum);
         int partition_count();
         int partition_itemcount(int part);
-        std::unordered_map<uint64_t, Ptr<RefCountCacheItem<C>>>* partition_getMap(int part);
+        TSHashTable<RefCountCacheHashing>* partition_getMap(int part);
         void copy_partition(int part, std::vector<Ptr<RefCountCacheItemBase>> *items);
         std::string get_filepath();
 
@@ -352,7 +387,7 @@ template <class C> int RefCountCache<C>::partition_itemcount(int pnum) {
   return this->partitions[pnum].numItems();
 }
 
-template <class C> std::unordered_map<uint64_t, Ptr<RefCountCacheItem<C>>>* RefCountCache<C>::partition_getMap(int pnum) {
+template <class C> TSHashTable<RefCountCacheHashing>* RefCountCache<C>::partition_getMap(int pnum) {
   return this->partitions[pnum].getMap();
 }
 

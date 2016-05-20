@@ -1640,14 +1640,15 @@ HostDBContinuation::iterateEvent(int event, Event *e)
         return EVENT_CONT;
       }
 
-      std::unordered_map<uint64_t, Ptr<RefCountCacheItem<HostDBInfo>>>* partMap = hostDB.newCache->partition_getMap(current_iterate_pos);
+      TSHashTable<RefCountCacheHashing>* partMap = hostDB.newCache->partition_getMap(current_iterate_pos);
       for (RefCountCachePartition<HostDBInfo>::iteratortype i = partMap->begin(); i != partMap->end(); ++i) {
-          RefCountCacheItem<HostDBInfo> *ritem = i->second;
+          RefCountCacheItem<HostDBInfo> *ritem = (RefCountCacheItem<HostDBInfo> *) i->item.m_ptr;
           HostDBInfo *r = ritem->item();
           if (r && !r->is_failed()) {
-			action.continuation->handleEvent(EVENT_INTERVAL, static_cast<void *>(r));
-		  }
+            action.continuation->handleEvent(EVENT_INTERVAL, static_cast<void *>(r));
+          }
       }
+
     }
 
     // And reschedule ourselves to pickup the next bucket after HOST_DB_RETRY_PERIOD.
